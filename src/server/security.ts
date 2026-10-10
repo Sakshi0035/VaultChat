@@ -153,17 +153,17 @@ export function validatePassword(password: unknown): {
 }
 
 /**
- * Deterministic Rich Crimson / Dark Pinked Red avatar color palette
+ * Deterministic Ocean Blue & Emerald Green avatar color palette
  */
 export const AVATAR_COLORS = [
-  '#E11D48', // Rich Rose-Red
-  '#BE123C', // Deep Crimson
-  '#DB2777', // Rich Pink
-  '#9F1239', // Ruby Red
-  '#EC4899', // Vibrant Rose Pink
-  '#881337', // Dark Burgundy Rose
-  '#F43F5E', // Coral Crimson
-  '#A21CAF', // Deep Magenta Berry
+  '#0284C7', // Ocean Blue
+  '#059669', // Emerald Green
+  '#0D9488', // Deep Teal
+  '#2563EB', // Royal Sapphire Blue
+  '#10B981', // Vibrant Mint Emerald
+  '#0891B2', // Cyan Lagoon
+  '#4F46E5', // Indigo Blue
+  '#047857', // Forest Emerald
 ];
 
 export function pickAvatarColor(usernameNormalized: string): string {

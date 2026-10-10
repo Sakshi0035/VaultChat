@@ -78,12 +78,12 @@ export default function App() {
   if (authChecking) {
     return (
       <div
-        className={`min-h-screen flex items-center justify-center ${
-          isDark ? 'bg-[#14040A] text-white' : 'bg-white text-rose-950'
+        className={`min-h-[100dvh] flex items-center justify-center ${
+          isDark ? 'bg-[#040D1A] text-white' : 'bg-white text-slate-900'
         }`}
       >
         <div className="flex flex-col items-center gap-3">
-          <div className="w-7 h-7 rounded-full border-2 border-rose-500 border-t-transparent animate-spin" />
+          <div className="w-7 h-7 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
           <span className="text-xs font-medium tracking-wide">
             Verifying secure session...
           </span>

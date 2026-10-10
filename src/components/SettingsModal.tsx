@@ -36,14 +36,14 @@ interface SettingsModalProps {
 }
 
 const AVATAR_COLORS = [
-  '#E11D48', // Rich Rose-Red
-  '#BE123C', // Deep Crimson
-  '#DB2777', // Rich Pink
-  '#9F1239', // Ruby Red
-  '#EC4899', // Vibrant Rose Pink
-  '#881337', // Dark Burgundy Rose
-  '#F43F5E', // Coral Crimson
-  '#A21CAF', // Deep Magenta Berry
+  '#0284C7', // Ocean Blue
+  '#059669', // Emerald Green
+  '#0D9488', // Deep Teal
+  '#2563EB', // Royal Sapphire Blue
+  '#10B981', // Vibrant Mint Emerald
+  '#0891B2', // Cyan Lagoon
+  '#4F46E5', // Indigo Blue
+  '#047857', // Forest Emerald
 ];
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -64,7 +64,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const [username, setUsername] = useState(currentUser.username);
   const [bio, setBio] = useState(currentUser.bio || '');
-  const [avatarColor, setAvatarColor] = useState(currentUser.avatarColor || '#E11D48');
+  const [avatarColor, setAvatarColor] = useState(currentUser.avatarColor || '#0284C7');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -92,7 +92,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setActiveTab(initialTab);
       setUsername(currentUser.username);
       setBio(currentUser.bio || '');
-      setAvatarColor(currentUser.avatarColor || '#E11D48');
+      setAvatarColor(currentUser.avatarColor || '#0284C7');
       setProfileMessage(null);
       setPasswordError(null);
       setDeleteError(null);
@@ -231,99 +231,116 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-xs"
+      onClick={onClose}
+    >
       <div
-        className={`w-full max-w-3xl max-h-[90vh] flex flex-col md:flex-row rounded-xl border overflow-hidden ${
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-3xl max-h-[92dvh] sm:max-h-[88vh] flex flex-col md:flex-row rounded-t-3xl sm:rounded-2xl border-t sm:border overflow-hidden pb-safe ${
           isDark
-            ? 'bg-[#220712] border-rose-900/70 text-white'
-            : 'bg-white border-rose-200 text-rose-950'
+            ? 'bg-[#071829] border-teal-900/70 text-white'
+            : 'bg-white border-teal-200 text-slate-900'
         }`}
       >
-        {/* Sidebar Tabs */}
+        {/* Sidebar / Mobile Top Tabs */}
         <div
-          className={`w-full md:w-56 border-b md:border-b-0 md:border-r p-4 flex flex-col justify-between shrink-0 ${
-            isDark ? 'bg-[#17040B] border-rose-900/60' : 'bg-rose-50/60 border-rose-200'
+          className={`w-full md:w-56 border-b md:border-b-0 md:border-r p-3.5 sm:p-4 flex flex-col justify-between shrink-0 ${
+            isDark ? 'bg-[#040E1C] border-teal-900/60' : 'bg-teal-50/50 border-teal-200'
           }`}
         >
           <div>
-            <div className="flex items-center justify-between mb-4 px-2">
+            {/* Mobile Drag Handle */}
+            <div className="sm:hidden -mt-1 pb-2 flex justify-center">
+              <div
+                className={`w-10 h-1.5 rounded-full ${
+                  isDark ? 'bg-teal-800/80' : 'bg-teal-200'
+                }`}
+              />
+            </div>
+
+            <div className="flex items-center justify-between mb-3 md:mb-4 px-1">
               <h2 className="text-sm font-bold tracking-tight">Settings</h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="md:hidden p-1 rounded-lg hover:bg-rose-900/40"
+                className="md:hidden min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl hover:bg-teal-900/40 -mr-1"
                 aria-label="Close settings"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <nav className="flex md:flex-col gap-1 overflow-x-auto">
+            <nav className="grid grid-cols-4 md:flex md:flex-col gap-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('account')}
-                className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2.5 px-2 md:px-3 py-2 min-h-[44px] text-[11px] md:text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
                   activeTab === 'account'
-                    ? 'bg-rose-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-xs'
                     : isDark
-                    ? 'text-rose-200/80 hover:bg-rose-950 hover:text-white'
-                    : 'text-rose-800 hover:bg-rose-100 hover:text-rose-950'
+                    ? 'text-cyan-100/80 hover:bg-teal-950/60 hover:text-white'
+                    : 'text-slate-700 hover:bg-teal-100/60 hover:text-slate-900'
                 }`}
               >
                 <User className="w-4 h-4 shrink-0" />
-                <span>Account & Profile</span>
+                <span className="md:hidden">Account</span>
+                <span className="hidden md:inline">Account & Profile</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('privacy')}
-                className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2.5 px-2 md:px-3 py-2 min-h-[44px] text-[11px] md:text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
                   activeTab === 'privacy'
-                    ? 'bg-rose-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-xs'
                     : isDark
-                    ? 'text-rose-200/80 hover:bg-rose-950 hover:text-white'
-                    : 'text-rose-800 hover:bg-rose-100 hover:text-rose-950'
+                    ? 'text-cyan-100/80 hover:bg-teal-950/60 hover:text-white'
+                    : 'text-slate-700 hover:bg-teal-100/60 hover:text-slate-900'
                 }`}
               >
                 <ShieldBan className="w-4 h-4 shrink-0" />
-                <span>Blocked Users</span>
+                <span className="md:hidden">Blocked</span>
+                <span className="hidden md:inline">Blocked Users</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('appearance')}
-                className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2.5 px-2 md:px-3 py-2 min-h-[44px] text-[11px] md:text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
                   activeTab === 'appearance'
-                    ? 'bg-rose-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-xs'
                     : isDark
-                    ? 'text-rose-200/80 hover:bg-rose-950 hover:text-white'
-                    : 'text-rose-800 hover:bg-rose-100 hover:text-rose-950'
+                    ? 'text-cyan-100/80 hover:bg-teal-950/60 hover:text-white'
+                    : 'text-slate-700 hover:bg-teal-100/60 hover:text-slate-900'
                 }`}
               >
                 <Palette className="w-4 h-4 shrink-0" />
-                <span>Appearance</span>
+                <span className="md:hidden">Theme</span>
+                <span className="hidden md:inline">Appearance</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('sessions')}
-                className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                className={`flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2.5 px-2 md:px-3 py-2 min-h-[44px] text-[11px] md:text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
                   activeTab === 'sessions'
-                    ? 'bg-rose-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-xs'
                     : isDark
-                    ? 'text-rose-200/80 hover:bg-rose-950 hover:text-white'
-                    : 'text-rose-800 hover:bg-rose-100 hover:text-rose-950'
+                    ? 'text-cyan-100/80 hover:bg-teal-950/60 hover:text-white'
+                    : 'text-slate-700 hover:bg-teal-100/60 hover:text-slate-900'
                 }`}
               >
                 <Laptop className="w-4 h-4 shrink-0" />
-                <span>Session & Security</span>
+                <span className="md:hidden">Sessions</span>
+                <span className="hidden md:inline">Session & Security</span>
               </button>
             </nav>
           </div>
 
           <div
             className={`hidden md:block pt-4 border-t text-[11px] leading-relaxed ${
-              isDark ? 'border-rose-900/60 text-rose-300/60' : 'border-rose-200 text-rose-700/70'
+              isDark ? 'border-teal-900/60 text-cyan-200/60' : 'border-teal-200 text-slate-600'
             }`}
           >
             Your account is automatically deleted after 9 months without signing in.
@@ -331,10 +348,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-6 space-y-8">
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
           <div
-            className={`flex items-center justify-between border-b pb-4 ${
-              isDark ? 'border-rose-900/60' : 'border-rose-200'
+            className={`flex items-center justify-between border-b pb-3.5 sm:pb-4 ${
+              isDark ? 'border-teal-900/60' : 'border-teal-200'
             }`}
           >
             <div>
@@ -344,24 +361,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {activeTab === 'appearance' && 'Appearance & Theme'}
                 {activeTab === 'sessions' && 'Active Sessions & Sign Out'}
               </h3>
-              <p className={`text-xs mt-0.5 ${isDark ? 'text-rose-200/75' : 'text-rose-800/80'}`}>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-100/75' : 'text-slate-600'}`}>
                 Signed in as @{currentUser.username}
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className={`hidden md:flex p-1.5 rounded-lg transition-colors ${
-                isDark ? 'hover:bg-rose-950 text-rose-300' : 'hover:bg-rose-100 text-rose-700'
+              className={`hidden md:flex min-w-[40px] min-h-[40px] items-center justify-center rounded-xl transition-colors ${
+                isDark ? 'hover:bg-teal-950 text-cyan-200' : 'hover:bg-teal-50 text-slate-600'
               }`}
               aria-label="Close modal"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {activeTab === 'account' && (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               <form onSubmit={handleSaveProfile} className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div
@@ -370,21 +387,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   >
                     {username.slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <span className="text-xs font-semibold block">Avatar Color</span>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap">
                       {AVATAR_COLORS.map((color) => (
                         <button
                           key={color}
                           type="button"
                           onClick={() => setAvatarColor(color)}
-                          className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform ${
-                            avatarColor === color ? 'scale-110 ring-2 ring-offset-2 ring-rose-500' : ''
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
+                            avatarColor === color ? 'scale-110 ring-2 ring-offset-2 ring-emerald-400' : ''
                           }`}
                           style={{ backgroundColor: color }}
                           aria-label={`Select color ${color}`}
                         >
-                          {avatarColor === color && <Check className="w-3.5 h-3.5 text-white" />}
+                          {avatarColor === color && <Check className="w-4 h-4 text-white" />}
                         </button>
                       ))}
                     </div>
@@ -393,26 +410,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   <div>
-                    <label className="block text-xs font-semibold mb-1">Username</label>
+                    <label className="block text-xs font-semibold mb-1.5">Username</label>
                     <input
                       type="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       maxLength={30}
-                      className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-rose-500 ${
+                      className={`w-full px-3.5 py-2.5 min-h-[46px] text-base sm:text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                         isDark
-                          ? 'bg-[#14040A] border-rose-800/80 text-white'
-                          : 'bg-rose-50/40 border-rose-300 text-rose-950'
+                          ? 'bg-[#040D1A] border-teal-800/80 text-white'
+                          : 'bg-teal-50/30 border-teal-300 text-slate-900'
                       }`}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1">Account Created</label>
+                    <label className="block text-xs font-semibold mb-1.5">Account Created</label>
                     <div
-                      className={`px-3 py-2 text-sm rounded-lg border tabular-nums ${
+                      className={`px-3.5 py-2.5 min-h-[46px] flex items-center text-sm rounded-xl border tabular-nums ${
                         isDark
-                          ? 'bg-[#14040A]/60 border-rose-900/60 text-rose-200/80'
-                          : 'bg-rose-50 border-rose-200 text-rose-800'
+                          ? 'bg-[#040D1A]/60 border-teal-900/60 text-cyan-100/80'
+                          : 'bg-teal-50/50 border-teal-200 text-slate-700'
                       }`}
                     >
                       {new Date(currentUser.createdAt).toLocaleDateString(undefined, {
@@ -425,17 +444,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Bio (optional)</label>
+                  <label className="block text-xs font-semibold mb-1.5">Bio (optional)</label>
                   <input
                     type="text"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     maxLength={160}
                     placeholder="A short note visible on your profile"
-                    className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-rose-500 ${
+                    className={`w-full px-3.5 py-2.5 min-h-[46px] text-base sm:text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                       isDark
-                        ? 'bg-[#14040A] border-rose-800/80 text-white'
-                        : 'bg-rose-50/40 border-rose-300 text-rose-950'
+                        ? 'bg-[#040D1A] border-teal-800/80 text-white'
+                        : 'bg-teal-50/30 border-teal-300 text-slate-900'
                     }`}
                   />
                 </div>
@@ -443,15 +462,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {profileMessage && (
                   <p
                     className={`text-xs font-medium ${
-                      profileMessage.type === 'success' ? 'text-rose-400' : 'text-red-400'
+                      profileMessage.type === 'success' ? 'text-emerald-400' : 'text-red-400'
                     }`}
                   >
                     {profileMessage.text}
                   </p>
                 )}
 
-                <div className="flex items-center justify-between pt-1">
-                  <span className={`text-[11px] tabular-nums ${isDark ? 'text-rose-300/60' : 'text-rose-700/70'}`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                  <span className={`text-[11px] tabular-nums ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
                     Last sign-in:{' '}
                     {new Date(currentUser.lastLoginAt).toLocaleString(undefined, {
                       dateStyle: 'medium',
@@ -461,7 +480,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     type="submit"
                     disabled={profileSaving}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap"
+                    className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 disabled:opacity-50 rounded-xl transition-all whitespace-nowrap"
                   >
                     {profileSaving ? 'Saving...' : 'Save Profile'}
                   </button>
@@ -470,10 +489,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Subtle 9-Month Inactivity Notice (Requirement 29) */}
               <div
-                className={`p-3.5 rounded-lg border text-xs ${
+                className={`p-3.5 rounded-xl border text-xs ${
                   isDark
-                    ? 'bg-[#14040A]/70 border-rose-900/60 text-rose-200/80'
-                    : 'bg-rose-50 border-rose-200 text-rose-900'
+                    ? 'bg-[#040D1A]/70 border-teal-900/60 text-cyan-100/80'
+                    : 'bg-teal-50/60 border-teal-200 text-slate-800'
                 }`}
               >
                 Your account is automatically deleted after 9 months without signing in.
@@ -482,67 +501,67 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Change Password Section (Requirement 16 & 17) */}
               <div
                 className={`pt-6 border-t space-y-4 ${
-                  isDark ? 'border-rose-900/60' : 'border-rose-200'
+                  isDark ? 'border-teal-900/60' : 'border-teal-200'
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-rose-500" />
+                  <Lock className="w-4 h-4 text-emerald-400" />
                   <h4 className="text-sm font-bold">Change Password</h4>
                 </div>
-                <p className={`text-xs ${isDark ? 'text-rose-200/75' : 'text-rose-800/80'}`}>
+                <p className={`text-xs ${isDark ? 'text-cyan-100/75' : 'text-slate-600'}`}>
                   Because there is no password recovery, you must verify your current password first.
                   Changing your password revokes all existing sessions and requires you to sign in again.
                 </p>
 
                 {passwordError && (
-                  <div className="p-3 rounded-lg border border-red-500/40 bg-red-500/10 text-red-300 text-xs">
+                  <div className="p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 text-xs">
                     {passwordError}
                   </div>
                 )}
 
                 <form onSubmit={handleChangePassword} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-semibold mb-1">Current Password</label>
+                    <label className="block text-xs font-semibold mb-1.5">Current Password</label>
                     <input
                       type="password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       required
-                      className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-rose-500 ${
+                      className={`w-full px-3.5 py-2.5 min-h-[46px] text-base sm:text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                         isDark
-                          ? 'bg-[#14040A] border-rose-800/80 text-white'
-                          : 'bg-rose-50/40 border-rose-300 text-rose-950'
+                          ? 'bg-[#040D1A] border-teal-800/80 text-white'
+                          : 'bg-teal-50/30 border-teal-300 text-slate-900'
                       }`}
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold mb-1">New Password</label>
+                      <label className="block text-xs font-semibold mb-1.5">New Password</label>
                       <input
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Min 8 characters"
                         required
-                        className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-rose-500 ${
+                        className={`w-full px-3.5 py-2.5 min-h-[46px] text-base sm:text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                           isDark
-                            ? 'bg-[#14040A] border-rose-800/80 text-white'
-                            : 'bg-rose-50/40 border-rose-300 text-rose-950'
+                            ? 'bg-[#040D1A] border-teal-800/80 text-white'
+                            : 'bg-teal-50/30 border-teal-300 text-slate-900'
                         }`}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold mb-1">Confirm New Password</label>
+                      <label className="block text-xs font-semibold mb-1.5">Confirm New Password</label>
                       <input
                         type="password"
                         value={confirmNewPassword}
                         onChange={(e) => setConfirmNewPassword(e.target.value)}
                         placeholder="Re-enter new password"
                         required
-                        className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-rose-500 ${
+                        className={`w-full px-3.5 py-2.5 min-h-[46px] text-base sm:text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                           isDark
-                            ? 'bg-[#14040A] border-rose-800/80 text-white'
-                            : 'bg-rose-50/40 border-rose-300 text-rose-950'
+                            ? 'bg-[#040D1A] border-teal-800/80 text-white'
+                            : 'bg-teal-50/30 border-teal-300 text-slate-900'
                         }`}
                       />
                     </div>
@@ -551,7 +570,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="submit"
                       disabled={passwordLoading}
-                      className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition-colors whitespace-nowrap"
+                      className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 text-white transition-all whitespace-nowrap"
                     >
                       {passwordLoading ? 'Updating Password...' : 'Update Password'}
                     </button>
@@ -562,16 +581,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Permanent Account Deletion Section (Requirement 18) */}
               <div
                 className={`pt-6 border-t space-y-4 ${
-                  isDark ? 'border-rose-900/60' : 'border-rose-200'
+                  isDark ? 'border-teal-900/60' : 'border-teal-200'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h4 className="text-sm font-bold text-red-400 flex items-center gap-2">
                       <Trash2 className="w-4 h-4" />
                       <span>Delete Account</span>
                     </h4>
-                    <p className={`text-xs mt-1 ${isDark ? 'text-rose-200/75' : 'text-rose-800/80'}`}>
+                    <p className={`text-xs mt-1 ${isDark ? 'text-cyan-100/75' : 'text-slate-600'}`}>
                       Permanently delete your account, conversations, messages, and sessions.
                     </p>
                   </div>
@@ -579,7 +598,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowDeleteConfirm(true)}
-                      className="px-3.5 py-2 text-xs font-semibold text-red-400 border border-red-500/40 hover:bg-red-500/10 rounded-lg transition-colors whitespace-nowrap"
+                      className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] text-xs font-semibold text-red-400 border border-red-500/40 hover:bg-red-500/10 rounded-xl transition-colors whitespace-nowrap"
                     >
                       Delete Account...
                     </button>
@@ -589,7 +608,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {showDeleteConfirm && (
                   <form
                     onSubmit={handleDeleteAccount}
-                    className={`p-4 rounded-xl border space-y-4 ${
+                    className={`p-4 rounded-2xl border space-y-4 ${
                       isDark
                         ? 'bg-red-950/35 border-red-800/60'
                         : 'bg-red-50 border-red-200'
@@ -601,7 +620,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <h5 className="text-xs font-bold text-red-400">
                           Delete account permanently?
                         </h5>
-                        <p className={`text-xs leading-relaxed ${isDark ? 'text-rose-100' : 'text-rose-950'}`}>
+                        <p className={`text-xs leading-relaxed ${isDark ? 'text-cyan-50' : 'text-slate-900'}`}>
                           Your account, conversations, messages and associated data may be
                           permanently deleted. This cannot be undone.
                         </p>
@@ -613,7 +632,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
 
                     <div>
-                      <label className="block text-xs font-semibold mb-1">
+                      <label className="block text-xs font-semibold mb-1.5">
                         Enter your current password to confirm
                       </label>
                       <input
@@ -622,15 +641,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onChange={(e) => setDeletePassword(e.target.value)}
                         placeholder="Current password"
                         required
-                        className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-red-500/50 ${
+                        className={`w-full px-3.5 py-2.5 min-h-[46px] text-base sm:text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-red-500/50 ${
                           isDark
-                            ? 'bg-[#14040A] border-rose-800 text-white'
-                            : 'bg-white border-red-300 text-rose-950'
+                            ? 'bg-[#040D1A] border-teal-800 text-white'
+                            : 'bg-white border-red-300 text-slate-900'
                         }`}
                       />
                     </div>
 
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -638,10 +657,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           setDeletePassword('');
                           setDeleteError(null);
                         }}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${
+                        className={`px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border ${
                           isDark
-                            ? 'border-rose-800 text-rose-200 hover:bg-rose-950'
-                            : 'border-rose-300 text-rose-800 hover:bg-white'
+                            ? 'border-teal-800 text-cyan-100 hover:bg-teal-950'
+                            : 'border-teal-300 text-slate-700 hover:bg-white'
                         }`}
                       >
                         Cancel
@@ -649,7 +668,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <button
                         type="submit"
                         disabled={deleteLoading}
-                        className="px-4 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors whitespace-nowrap"
+                        className="px-4 py-2.5 min-h-[44px] text-xs font-semibold bg-red-600 hover:bg-red-500 text-white rounded-xl transition-colors whitespace-nowrap"
                       >
                         {deleteLoading ? 'Deleting Permanently...' : 'Permanently Delete Account'}
                       </button>
@@ -662,63 +681,65 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {activeTab === 'privacy' && (
             <div className="space-y-6">
-              <form onSubmit={handleBlockByUsername} className="flex gap-2">
+              <form onSubmit={handleBlockByUsername} className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   value={blockInputUsername}
                   onChange={(e) => setBlockInputUsername(e.target.value)}
                   placeholder="Enter @username to block..."
-                  className={`flex-1 px-3.5 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-rose-500 ${
+                  className={`flex-1 px-3.5 py-2.5 min-h-[46px] text-base sm:text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                     isDark
-                      ? 'bg-[#14040A] border-rose-800/80 text-white'
-                      : 'bg-rose-50/40 border-rose-300 text-rose-950'
+                      ? 'bg-[#040D1A] border-teal-800/80 text-white'
+                      : 'bg-teal-50/30 border-teal-300 text-slate-900'
                   }`}
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors whitespace-nowrap"
+                  className="px-5 py-2.5 min-h-[46px] text-xs font-semibold bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 text-white rounded-xl transition-all whitespace-nowrap"
                 >
                   Block User
                 </button>
               </form>
 
               {blockActionMessage && (
-                <p className="text-xs text-rose-400">{blockActionMessage}</p>
+                <p className="text-xs text-emerald-400">{blockActionMessage}</p>
               )}
 
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-rose-400">
+                <h4 className="text-xs font-semibold text-emerald-400">
                   Blocked Users ({blockedUsers.length})
                 </h4>
                 {blocksLoading ? (
-                  <p className="text-xs text-rose-300/60 py-4">Loading blocked users...</p>
+                  <p className="text-xs text-cyan-200/60 py-4">Loading blocked users...</p>
                 ) : blockedUsers.length === 0 ? (
                   <div
-                    className={`p-6 text-center rounded-xl border text-xs ${
+                    className={`p-6 text-center rounded-2xl border text-xs ${
                       isDark
-                        ? 'bg-[#14040A]/60 border-rose-900/60 text-rose-200/75'
-                        : 'bg-rose-50/50 border-rose-200 text-rose-800'
+                        ? 'bg-[#040D1A]/60 border-teal-900/60 text-cyan-100/75'
+                        : 'bg-teal-50/50 border-teal-200 text-slate-700'
                     }`}
                   >
                     You have not blocked any users. Blocked users cannot send you messages or start conversations.
                   </div>
                 ) : (
-                  <div className="divide-y divide-rose-900/40 border border-rose-900/50 rounded-xl overflow-hidden">
+                  <div className="divide-y divide-teal-900/40 border border-teal-900/50 rounded-2xl overflow-hidden">
                     {blockedUsers.map((b) => (
                       <div
                         key={b.username}
-                        className="flex items-center justify-between px-4 py-3"
+                        className="flex items-center justify-between px-4 py-3.5 gap-3"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                             style={{ backgroundColor: b.avatarColor }}
                           >
                             {b.username.slice(0, 2).toUpperCase()}
                           </div>
-                          <div>
-                            <div className="text-sm font-semibold">@{b.username}</div>
-                            <div className="text-[11px] text-rose-300/60 tabular-nums">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold truncate">@{b.username}</div>
+                            <div className="text-[11px] text-cyan-200/60 tabular-nums">
                               Blocked {new Date(b.blockedAt).toLocaleDateString()}
                             </div>
                           </div>
@@ -726,10 +747,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUnblock(b.username)}
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap ${
+                          className={`px-3.5 py-2 min-h-[40px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap shrink-0 ${
                             isDark
-                              ? 'border-rose-800 hover:bg-rose-950 text-white'
-                              : 'border-rose-300 hover:bg-rose-50 text-rose-900'
+                              ? 'border-teal-800 hover:bg-teal-950 text-white'
+                              : 'border-teal-300 hover:bg-teal-50 text-slate-900'
                           }`}
                         >
                           Unblock
@@ -744,7 +765,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {activeTab === 'appearance' && (
             <div className="space-y-6">
-              <p className={`text-xs ${isDark ? 'text-rose-200/75' : 'text-rose-800/80'}`}>
+              <p className={`text-xs ${isDark ? 'text-cyan-100/75' : 'text-slate-600'}`}>
                 Choose how VaultChat looks on your device. Theme preference is the only setting stored locally in your browser.
               </p>
 
@@ -752,54 +773,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => onThemeChange('light')}
-                  className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-colors ${
+                  className={`flex items-center gap-3 p-4 min-h-[64px] rounded-2xl border text-left transition-colors ${
                     theme === 'light'
-                      ? 'border-rose-500 bg-rose-500/15'
+                      ? 'border-emerald-500 bg-emerald-500/15'
                       : isDark
-                      ? 'border-rose-900/60 bg-[#14040A]/60 hover:border-rose-700'
-                      : 'border-rose-200 bg-rose-50/40 hover:border-rose-300'
+                      ? 'border-teal-900/60 bg-[#040D1A]/60 hover:border-teal-700'
+                      : 'border-teal-200 bg-teal-50/40 hover:border-teal-300'
                   }`}
                 >
-                  <Sun className="w-5 h-5 text-rose-500 shrink-0" />
+                  <Sun className="w-5 h-5 text-emerald-500 shrink-0" />
                   <div>
-                    <div className="text-sm font-semibold">White & Crimson</div>
-                    <div className="text-[11px] text-rose-400">Crisp white & rich red</div>
+                    <div className="text-sm font-semibold">White & Ocean</div>
+                    <div className="text-[11px] text-emerald-400">Crisp white, blue & emerald</div>
                   </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onThemeChange('dark')}
-                  className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-colors ${
+                  className={`flex items-center gap-3 p-4 min-h-[64px] rounded-2xl border text-left transition-colors ${
                     theme === 'dark'
-                      ? 'border-rose-500 bg-rose-500/15'
+                      ? 'border-emerald-500 bg-emerald-500/15'
                       : isDark
-                      ? 'border-rose-900/60 bg-[#14040A]/60 hover:border-rose-700'
-                      : 'border-rose-200 bg-rose-50/40 hover:border-rose-300'
+                      ? 'border-teal-900/60 bg-[#040D1A]/60 hover:border-teal-700'
+                      : 'border-teal-200 bg-teal-50/40 hover:border-teal-300'
                   }`}
                 >
-                  <Moon className="w-5 h-5 text-pink-400 shrink-0" />
+                  <Moon className="w-5 h-5 text-cyan-400 shrink-0" />
                   <div>
-                    <div className="text-sm font-semibold">Dark Pinked Red</div>
-                    <div className="text-[11px] text-rose-400">Deep velvet crimson & white</div>
+                    <div className="text-sm font-semibold">Dark Blue & Emerald</div>
+                    <div className="text-[11px] text-emerald-400">Deep ocean & teal gradient</div>
                   </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onThemeChange('system')}
-                  className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-colors ${
+                  className={`flex items-center gap-3 p-4 min-h-[64px] rounded-2xl border text-left transition-colors ${
                     theme === 'system'
-                      ? 'border-rose-500 bg-rose-500/15'
+                      ? 'border-emerald-500 bg-emerald-500/15'
                       : isDark
-                      ? 'border-rose-900/60 bg-[#14040A]/60 hover:border-rose-700'
-                      : 'border-rose-200 bg-rose-50/40 hover:border-rose-300'
+                      ? 'border-teal-900/60 bg-[#040D1A]/60 hover:border-teal-700'
+                      : 'border-teal-200 bg-teal-50/40 hover:border-teal-300'
                   }`}
                 >
-                  <Monitor className="w-5 h-5 text-rose-400 shrink-0" />
+                  <Monitor className="w-5 h-5 text-blue-400 shrink-0" />
                   <div>
                     <div className="text-sm font-semibold">System</div>
-                    <div className="text-[11px] text-rose-400">Match OS setting</div>
+                    <div className="text-[11px] text-emerald-400">Match OS setting</div>
                   </div>
                 </button>
               </div>
@@ -808,59 +829,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {activeTab === 'sessions' && (
             <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="text-sm font-bold">Session Controls</h4>
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-rose-200/75' : 'text-rose-800/80'}`}>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-100/75' : 'text-slate-600'}`}>
                     Sign out of this browser or revoke all active sessions across every device.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <button
                     type="button"
                     onClick={handleLogoutCurrent}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap ${
+                    className={`inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
                       isDark
-                        ? 'border-rose-800 hover:bg-rose-950 text-white'
-                        : 'border-rose-300 hover:bg-rose-50 text-rose-900'
+                        ? 'border-teal-800 hover:bg-teal-950 text-white'
+                        : 'border-teal-300 hover:bg-teal-50 text-slate-900'
                     }`}
                   >
-                    <LogOut className="w-3.5 h-3.5" />
+                    <LogOut className="w-4 h-4" />
                     <span>Log Out</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleLogoutAll}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors whitespace-nowrap"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] text-xs font-semibold bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 text-white rounded-xl transition-all whitespace-nowrap"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
+                    <LogOut className="w-4 h-4" />
                     <span>Log Out of All Devices</span>
                   </button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h5 className="text-xs font-semibold text-rose-400">
+                <h5 className="text-xs font-semibold text-emerald-400">
                   Active Server-Side Sessions ({sessions.length})
                 </h5>
                 {sessionsLoading ? (
-                  <p className="text-xs text-rose-300/60 py-4">Loading active sessions...</p>
+                  <p className="text-xs text-cyan-200/60 py-4">Loading active sessions...</p>
                 ) : (
-                  <div className="divide-y divide-rose-900/40 border border-rose-900/50 rounded-xl overflow-hidden">
+                  <div className="divide-y divide-teal-900/40 border border-teal-900/50 rounded-2xl overflow-hidden">
                     {sessions.map((s) => (
-                      <div key={s.id} className="px-4 py-3 flex items-center justify-between gap-4">
+                      <div key={s.id} className="px-4 py-3.5 flex items-center justify-between gap-4">
                         <div className="min-w-0">
                           <div className="text-xs font-semibold truncate">
                             {s.userAgent}
                             {s.isCurrent ? ' · Current Session' : ''}
                           </div>
-                          <div className="text-[11px] text-rose-300/60 tabular-nums mt-0.5">
+                          <div className="text-[11px] text-cyan-200/60 tabular-nums mt-0.5">
                             Created {new Date(s.createdAt).toLocaleString()} · Last active{' '}
                             {new Date(s.lastUsedAt).toLocaleString()}
                           </div>
                         </div>
                         {s.isCurrent && (
-                          <span className="text-xs font-medium text-rose-400 shrink-0">
+                          <span className="text-xs font-medium text-emerald-400 shrink-0">
                             Active
                           </span>
                         )}

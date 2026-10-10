@@ -42,6 +42,8 @@ export function getTabSessionToken(): string | null {
   }
 }
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'X-Requested-With': 'VaultChatClient',
@@ -61,7 +63,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers['X-Session-Token'] = tabToken;
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     credentials: 'include',
     headers,
@@ -74,6 +76,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (!response.ok) {
+    if (
+      response.status === 404 &&
+      !contentType.includes('application/json') &&
+      typeof window !== 'undefined' &&
+      window.location.hostname.endsWith('github.io')
+    ) {
+      throw new Error(
+        'GitHub Pages only hosts static HTML/JS and cannot run the Node.js + Neon PostgreSQL server directly. Connect your GitHub repo to Render.com or set VITE_API_BASE_URL to your backend server.'
+      );
+    }
     const errorMessage = data?.error || `Request failed (${response.status})`;
     const err = new Error(errorMessage) as Error & { status?: number };
     err.status = response.status;

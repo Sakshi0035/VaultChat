@@ -82,6 +82,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
 
   const [typingPeers, setTypingPeers] = useState<Record<string, string>>({});
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -92,7 +93,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const [settingsInitialTab, setSettingsInitialTab] = useState<
     'account' | 'privacy' | 'appearance' | 'sessions'
   >('account');
-  const [showPeerDetails, setShowPeerDetails] = useState(true);
+  const [showPeerDetails, setShowPeerDetails] = useState(false);
   const [reportTarget, setReportTarget] = useState<{
     username: string;
     messageId?: string | null;
@@ -150,12 +151,14 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     if (!selectedConvId) {
       setMessages([]);
       setHasMoreMessages(false);
+      setSelectedMessageId(null);
       return;
     }
 
     let cancelled = false;
     setMessagesLoading(true);
     setMessagesError(null);
+    setSelectedMessageId(null);
 
     const load = async () => {
       try {
@@ -421,6 +424,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         );
         setEditingMessage(null);
         setComposerText('');
+        setSelectedMessageId(null);
         void fetchConversations();
       } else {
         const res = await api.sendMessage(
@@ -436,6 +440,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         setComposerText('');
         setPendingAttachment(null);
         setReplyingTo(null);
+        setSelectedMessageId(null);
         scrollToBottom('smooth');
         void fetchConversations();
       }
@@ -465,6 +470,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           m.id === messageId ? { ...m, body: '', isDeleted: true, attachment: null } : m
         )
       );
+      setSelectedMessageId(null);
       void fetchConversations();
     } catch (err: any) {
       setSendError(err.message || 'Failed to delete message.');
@@ -475,7 +481,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     try {
       await navigator.clipboard.writeText(msg.body);
       setCopiedMessageId(msg.id);
-      setTimeout(() => setCopiedMessageId(null), 1500);
+      setTimeout(() => {
+        setCopiedMessageId(null);
+        setSelectedMessageId(null);
+      }, 1200);
     } catch {
       // Ignore clipboard error
     }
@@ -540,6 +549,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const pendingRequestsCount = conversations.filter(
     (c) => c.status === 'pending' && !c.isInitiatedByMe
   ).length;
+  const totalUnreadChatsCount = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
   const unreadNotificationsCount = notifications.filter((n) => !n.isRead).length;
 
   const filteredConversations = conversations.filter((c) => {
@@ -558,27 +568,29 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
   return (
     <div
-      className={`h-screen w-full flex flex-col overflow-hidden transition-colors ${
-        isDark ? 'bg-[#14040A] text-white' : 'bg-white text-rose-950'
+      className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors ${
+        isDark
+          ? 'bg-gradient-to-br from-[#030B17] via-[#051324] to-[#041A1C] text-white'
+          : 'bg-white text-slate-900'
       }`}
     >
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden relative">
         {/* ====================================================================
             LEFT SIDEBAR: CONVERSATIONS & NAVIGATION
             ==================================================================== */}
         <aside
           className={`${
             selectedConvId ? 'hidden md:flex' : 'flex'
-          } w-full md:w-80 lg:w-96 flex-col border-r shrink-0 ${
+          } w-full md:w-80 lg:w-96 flex-col border-r shrink-0 h-full ${
             isDark
-              ? 'bg-[#1B060E] border-rose-900/60'
-              : 'bg-rose-50/40 border-rose-200'
+              ? 'bg-[#051221] border-teal-900/60'
+              : 'bg-teal-50/30 border-teal-200/80'
           }`}
         >
           {/* Sidebar Header */}
           <div
-            className={`px-4 py-3.5 border-b flex items-center justify-between gap-2 ${
-              isDark ? 'border-rose-900/60' : 'border-rose-200'
+            className={`px-4 h-14 sm:h-16 border-b flex items-center justify-between gap-2 shrink-0 ${
+              isDark ? 'border-teal-900/60' : 'border-teal-200/80'
             }`}
           >
             <button
@@ -587,7 +599,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 setSettingsInitialTab('account');
                 setShowSettingsModal(true);
               }}
-              className="flex items-center gap-2.5 min-w-0 text-left group cursor-pointer"
+              className="flex items-center gap-2.5 min-w-0 py-1 text-left group cursor-pointer"
               title="Open Profile & Account Settings"
             >
               <div className="relative shrink-0">
@@ -597,13 +609,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 >
                   {currentUser.username.slice(0, 2).toUpperCase()}
                 </div>
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-400 ring-2 ring-[#1B060E] absolute bottom-0 right-0" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#051221] absolute bottom-0 right-0" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-bold truncate group-hover:text-rose-400 transition-colors">
+                <div className="text-sm font-bold truncate group-hover:text-emerald-400 transition-colors">
                   @{currentUser.username}
                 </div>
-                <div className={`text-[11px] truncate ${isDark ? 'text-rose-300/70' : 'text-rose-700/70'}`}>
+                <div className={`text-[11px] truncate ${isDark ? 'text-cyan-200/70' : 'text-teal-700'}`}>
                   VaultChat
                 </div>
               </div>
@@ -613,10 +625,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setShowUserSearchModal(true)}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`min-w-[42px] min-h-[42px] flex items-center justify-center rounded-xl transition-colors ${
                   isDark
-                    ? 'hover:bg-rose-950 text-rose-200'
-                    : 'hover:bg-rose-100 text-rose-800'
+                    ? 'hover:bg-teal-950 text-cyan-100'
+                    : 'hover:bg-teal-100/70 text-teal-800'
                 }`}
                 title="Search users & start conversation"
                 aria-label="Search users"
@@ -627,17 +639,17 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setShowNotificationsModal(true)}
-                className={`relative p-2 rounded-lg transition-colors ${
+                className={`relative min-w-[42px] min-h-[42px] flex items-center justify-center rounded-xl transition-colors ${
                   isDark
-                    ? 'hover:bg-rose-950 text-rose-200'
-                    : 'hover:bg-rose-100 text-rose-800'
+                    ? 'hover:bg-teal-950 text-cyan-100'
+                    : 'hover:bg-teal-100/70 text-teal-800'
                 }`}
                 title="Notifications"
                 aria-label="Notifications"
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotificationsCount > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500" />
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400" />
                 )}
               </button>
 
@@ -647,10 +659,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   setSettingsInitialTab('account');
                   setShowSettingsModal(true);
                 }}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`min-w-[42px] min-h-[42px] flex items-center justify-center rounded-xl transition-colors ${
                   isDark
-                    ? 'hover:bg-rose-950 text-rose-200'
-                    : 'hover:bg-rose-100 text-rose-800'
+                    ? 'hover:bg-teal-950 text-cyan-100'
+                    : 'hover:bg-teal-100/70 text-teal-800'
                 }`}
                 title="Settings"
                 aria-label="Settings"
@@ -661,26 +673,28 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           </div>
 
           {/* Search & New Conversation Trigger */}
-          <div className="p-3 space-y-2.5">
+          <div className="p-3 space-y-2.5 shrink-0">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-rose-400" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
                 <input
                   type="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   value={sidebarSearch}
                   onChange={(e) => setSidebarSearch(e.target.value)}
                   placeholder="Filter chats or @username..."
-                  className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-rose-500/50 ${
+                  className={`w-full pl-9 pr-3 py-2 min-h-[42px] text-base sm:text-xs rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
                     isDark
-                      ? 'bg-[#14040A] border-rose-800/80 text-white placeholder-rose-400/50'
-                      : 'bg-white border-rose-300 text-rose-950 placeholder-rose-400'
+                      ? 'bg-[#030B17] border-teal-800/80 text-white placeholder-cyan-400/50'
+                      : 'bg-white border-teal-300 text-slate-900 placeholder-slate-400'
                   }`}
                 />
               </div>
               <button
                 type="button"
                 onClick={() => setShowUserSearchModal(true)}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition-colors whitespace-nowrap shrink-0"
+                className="px-3.5 py-2 min-h-[42px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 active:scale-[0.98] rounded-xl transition-all whitespace-nowrap shrink-0"
               >
                 Find User
               </button>
@@ -688,19 +702,19 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
             {/* Interactive Segmented Filter Controls */}
             <div
-              className={`flex items-center gap-1 p-1 rounded-lg ${
-                isDark ? 'bg-[#14040A]' : 'bg-rose-100/80'
+              className={`flex items-center gap-1 p-1 rounded-xl ${
+                isDark ? 'bg-[#030B17]' : 'bg-teal-100/70'
               }`}
             >
               <button
                 type="button"
                 onClick={() => setSidebarFilter('all')}
-                className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                className={`flex-1 py-1.5 min-h-[36px] text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
                   sidebarFilter === 'all'
-                    ? 'bg-rose-600 text-white shadow-xs'
+                    ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-xs'
                     : isDark
-                    ? 'text-rose-200/70 hover:text-white'
-                    : 'text-rose-800 hover:text-rose-950'
+                    ? 'text-cyan-100/70 hover:text-white'
+                    : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
                 All Chats
@@ -708,25 +722,25 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setSidebarFilter('unread')}
-                className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                className={`flex-1 py-1.5 min-h-[36px] text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
                   sidebarFilter === 'unread'
-                    ? 'bg-rose-600 text-white shadow-xs'
+                    ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-xs'
                     : isDark
-                    ? 'text-rose-200/70 hover:text-white'
-                    : 'text-rose-800 hover:text-rose-950'
+                    ? 'text-cyan-100/70 hover:text-white'
+                    : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
-                Unread
+                Unread {totalUnreadChatsCount > 0 ? `(${totalUnreadChatsCount})` : ''}
               </button>
               <button
                 type="button"
                 onClick={() => setSidebarFilter('requests')}
-                className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                className={`flex-1 py-1.5 min-h-[36px] text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
                   sidebarFilter === 'requests'
-                    ? 'bg-rose-600 text-white shadow-xs'
+                    ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white shadow-xs'
                     : isDark
-                    ? 'text-rose-200/70 hover:text-white'
-                    : 'text-rose-800 hover:text-rose-950'
+                    ? 'text-cyan-100/70 hover:text-white'
+                    : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
                 Requests {pendingRequestsCount > 0 ? `(${pendingRequestsCount})` : ''}
@@ -735,15 +749,15 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           </div>
 
           {/* Conversation List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-rose-900/30">
+          <div className="flex-1 overflow-y-auto divide-y divide-teal-900/30">
             {conversationsLoading ? (
               <div className="p-6 space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-3 animate-pulse">
-                    <div className="w-10 h-10 rounded-full bg-rose-900/50 shrink-0" />
+                    <div className="w-11 h-11 rounded-full bg-teal-900/50 shrink-0" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-3 bg-rose-900/50 rounded w-1/3" />
-                      <div className="h-2.5 bg-rose-900/30 rounded w-2/3" />
+                      <div className="h-3 bg-teal-900/50 rounded w-1/3" />
+                      <div className="h-2.5 bg-teal-900/30 rounded w-2/3" />
                     </div>
                   </div>
                 ))}
@@ -754,21 +768,21 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 <button
                   type="button"
                   onClick={() => void fetchConversations()}
-                  className="text-xs font-semibold text-rose-400 hover:underline"
+                  className="px-4 py-2 min-h-[40px] text-xs font-semibold text-emerald-400 hover:underline"
                 >
                   Retry
                 </button>
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-8 text-center space-y-3">
-                <MessageSquare className="w-7 h-7 text-rose-500/60 mx-auto" />
-                <p className={`text-xs ${isDark ? 'text-rose-200/70' : 'text-rose-800/75'}`}>
+                <MessageSquare className="w-8 h-8 text-emerald-400/60 mx-auto" />
+                <p className={`text-xs ${isDark ? 'text-cyan-100/70' : 'text-slate-600'}`}>
                   Your conversations will appear here.
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowUserSearchModal(true)}
-                  className="px-3.5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition-colors whitespace-nowrap"
+                  className="px-4 py-2.5 min-h-[44px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 rounded-xl transition-all whitespace-nowrap"
                 >
                   Search Username to Chat
                 </button>
@@ -790,27 +804,28 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                       setPendingAttachment(null);
                       setMessageSearchQuery('');
                       setShowMessageSearch(false);
+                      setSelectedMessageId(null);
                     }}
-                    className={`w-full px-4 py-3.5 flex items-start gap-3 text-left transition-colors cursor-pointer ${
+                    className={`w-full px-4 py-3.5 min-h-[68px] flex items-center gap-3.5 text-left transition-colors cursor-pointer ${
                       isSelected
                         ? isDark
-                          ? 'bg-rose-950/80 border-l-2 border-l-rose-500'
-                          : 'bg-rose-100/90 border-l-2 border-l-rose-600'
+                          ? 'bg-teal-950/80'
+                          : 'bg-teal-100/80'
                         : isDark
-                        ? 'hover:bg-rose-950/40'
-                        : 'hover:bg-rose-50'
+                        ? 'hover:bg-teal-950/40 active:bg-teal-950/60'
+                        : 'hover:bg-teal-50/70 active:bg-teal-100/50'
                     }`}
                   >
-                    <div className="relative shrink-0 mt-0.5">
+                    <div className="relative shrink-0">
                       <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
+                        className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
                         style={{ backgroundColor: conv.peer.avatarColor }}
                       >
                         {conv.peer.username.slice(0, 2).toUpperCase()}
                       </div>
                       {conv.peer.isOnline && (
                         <span
-                          className="w-2.5 h-2.5 rounded-full bg-rose-400 ring-2 ring-[#1B060E] absolute bottom-0 right-0"
+                          className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#051221] absolute bottom-0 right-0"
                           title="Online"
                         />
                       )}
@@ -823,7 +838,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                         </span>
                         <span
                           className={`text-[11px] tabular-nums shrink-0 ${
-                            isDark ? 'text-rose-300/60' : 'text-rose-700/70'
+                            isDark ? 'text-cyan-200/60' : 'text-slate-500'
                           }`}
                         >
                           {new Date(lastTime).toLocaleTimeString([], {
@@ -837,14 +852,14 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                         <p
                           className={`text-xs truncate ${
                             isTyping
-                              ? 'text-rose-400 font-medium'
+                              ? 'text-emerald-400 font-medium'
                               : conv.unreadCount > 0
                               ? isDark
                                 ? 'text-white font-semibold'
-                                : 'text-rose-950 font-semibold'
+                                : 'text-slate-900 font-semibold'
                               : isDark
-                              ? 'text-rose-200/65'
-                              : 'text-rose-800/70'
+                              ? 'text-cyan-100/65'
+                              : 'text-slate-600'
                           }`}
                         >
                           {isTyping ? (
@@ -868,15 +883,15 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                         </p>
 
                         {conv.unreadCount > 0 ? (
-                          <span className="px-1.5 py-0.5 text-[11px] font-bold bg-rose-600 text-white rounded-md tabular-nums shrink-0">
+                          <span className="px-2 py-0.5 text-[11px] font-bold bg-gradient-to-r from-blue-600 to-emerald-500 text-white rounded-md tabular-nums shrink-0">
                             {conv.unreadCount}
                           </span>
                         ) : conv.lastMessage?.isMine ? (
                           <CheckCheck
                             className={`w-3.5 h-3.5 shrink-0 ${
                               conv.lastMessage.isReadByPeer
-                                ? 'text-rose-400'
-                                : 'text-rose-400/40'
+                                ? 'text-emerald-400'
+                                : 'text-cyan-400/40'
                             }`}
                           />
                         ) : null}
@@ -887,6 +902,75 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               })
             )}
           </div>
+
+          {/* Mobile Natural Thumb-Zone Bottom Tab Bar (md:hidden) */}
+          <nav
+            className={`md:hidden grid grid-cols-4 items-center border-t pb-safe pt-1 shrink-0 ${
+              isDark
+                ? 'bg-[#040E1C]/95 border-teal-900/60'
+                : 'bg-white/95 border-teal-200'
+            }`}
+            aria-label="Mobile navigation"
+          >
+            <button
+              type="button"
+              onClick={() => setSidebarFilter('all')}
+              className="flex flex-col items-center justify-center py-2 min-h-[52px] text-emerald-400"
+            >
+              <div className="relative">
+                <MessageSquare className="w-5 h-5" />
+                {totalUnreadChatsCount > 0 && (
+                  <span className="-top-1 -right-2 px-1 min-w-[16px] h-4 rounded-full bg-gradient-to-r from-blue-600 to-emerald-500 text-white text-[10px] font-bold flex items-center justify-center tabular-nums absolute">
+                    {totalUnreadChatsCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-semibold tracking-tight mt-1">Chats</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowUserSearchModal(true)}
+              className={`flex flex-col items-center justify-center py-2 min-h-[52px] ${
+                isDark ? 'text-cyan-100/80 hover:text-white' : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              <MessageSquarePlus className="w-5 h-5" />
+              <span className="text-[10px] font-medium tracking-tight mt-1">New Chat</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowNotificationsModal(true)}
+              className={`flex flex-col items-center justify-center py-2 min-h-[52px] ${
+                isDark ? 'text-cyan-100/80 hover:text-white' : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              <div className="relative">
+                <Bell className="w-5 h-5" />
+                {unreadNotificationsCount > 0 && (
+                  <span className="-top-1 -right-2 px-1 min-w-[16px] h-4 rounded-full bg-gradient-to-r from-blue-600 to-emerald-500 text-white text-[10px] font-bold flex items-center justify-center tabular-nums absolute">
+                    {unreadNotificationsCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium tracking-tight mt-1">Alerts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsInitialTab('account');
+                setShowSettingsModal(true);
+              }}
+              className={`flex flex-col items-center justify-center py-2 min-h-[52px] ${
+                isDark ? 'text-cyan-100/80 hover:text-white' : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              <span className="text-[10px] font-medium tracking-tight mt-1">Settings</span>
+            </button>
+          </nav>
         </aside>
 
         {/* ====================================================================
@@ -895,15 +979,15 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         <main
           className={`${
             selectedConvId ? 'flex' : 'hidden md:flex'
-          } flex-1 flex-col min-w-0 h-full`}
+          } flex-1 flex-col min-w-0 h-full overflow-hidden`}
         >
           {!activeConversation ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               <div
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 border ${
                   isDark
-                    ? 'bg-[#220712] border-rose-900/70 text-rose-400'
-                    : 'bg-rose-50 border-rose-200 text-rose-600'
+                    ? 'bg-[#071829] border-teal-900/70 text-emerald-400'
+                    : 'bg-teal-50 border-teal-200 text-teal-600'
                 }`}
               >
                 <MessageSquare className="w-6 h-6" />
@@ -913,7 +997,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               </h2>
               <p
                 className={`text-xs max-w-sm mt-1.5 leading-relaxed ${
-                  isDark ? 'text-rose-200/75' : 'text-rose-800/80'
+                  isDark ? 'text-cyan-100/75' : 'text-slate-600'
                 }`}
               >
                 Search for any user by their @username to send a real-time message or share
@@ -922,7 +1006,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setShowUserSearchModal(true)}
-                className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition-colors whitespace-nowrap"
+                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 min-h-[44px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 rounded-xl transition-all whitespace-nowrap"
               >
                 <MessageSquarePlus className="w-4 h-4" />
                 <span>Search Username</span>
@@ -930,75 +1014,87 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             </div>
           ) : (
             <>
-              {/* Active Conversation Header */}
+              {/* Active Conversation Header (Compact 56px Mobile Top App Bar) */}
               <header
-                className={`px-4 py-3 border-b flex items-center justify-between gap-3 shrink-0 ${
-                  isDark ? 'bg-[#1B060E] border-rose-900/60' : 'bg-white border-rose-200'
+                className={`px-2 sm:px-4 h-14 sm:h-16 border-b flex items-center justify-between gap-2 shrink-0 ${
+                  isDark ? 'bg-[#051221] border-teal-900/60' : 'bg-white border-teal-200/80'
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
                   <button
                     type="button"
-                    onClick={() => setSelectedConvId(null)}
-                    className="md:hidden p-1.5 rounded-lg hover:bg-rose-900/50"
+                    onClick={() => {
+                      setSelectedConvId(null);
+                      setShowPeerDetails(false);
+                    }}
+                    className={`md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors shrink-0 ${
+                      isDark ? 'hover:bg-teal-950 text-white' : 'hover:bg-teal-50 text-slate-900'
+                    }`}
                     aria-label="Back to conversations"
                   >
-                    <ArrowLeft className="w-4 h-4" />
+                    <ArrowLeft className="w-5 h-5" />
                   </button>
 
-                  <div className="relative shrink-0">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
-                      style={{ backgroundColor: activeConversation.peer.avatarColor }}
-                    >
-                      {activeConversation.peer.username.slice(0, 2).toUpperCase()}
-                    </div>
-                    {activeConversation.peer.isOnline && (
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-400 ring-2 ring-[#1B060E] absolute bottom-0 right-0" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold truncate">
-                      @{activeConversation.peer.username}
-                    </div>
-                    <div className="text-[11px] flex items-center gap-1.5 truncate">
-                      {typingPeers[activeConversation.id] ? (
-                        <span className="text-rose-400 font-medium">typing...</span>
-                      ) : activeConversation.peer.isBlockedByMe ? (
-                        <span className="text-red-400">Blocked by you</span>
-                      ) : activeConversation.peer.isOnline ? (
-                        <span className="text-rose-400">Online</span>
-                      ) : activeConversation.peer.lastActiveAt ? (
-                        <span className={`tabular-nums ${isDark ? 'text-rose-300/70' : 'text-rose-700/70'}`}>
-                          Last active{' '}
-                          {new Date(activeConversation.peer.lastActiveAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      ) : (
-                        <span className={isDark ? 'text-rose-300/70' : 'text-rose-700/70'}>
-                          Offline
-                        </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPeerDetails(!showPeerDetails)}
+                    className="flex items-center gap-2.5 min-w-0 text-left py-1 cursor-pointer"
+                    title="View user profile details"
+                  >
+                    <div className="relative shrink-0">
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
+                        style={{ backgroundColor: activeConversation.peer.avatarColor }}
+                      >
+                        {activeConversation.peer.username.slice(0, 2).toUpperCase()}
+                      </div>
+                      {activeConversation.peer.isOnline && (
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#051221] absolute bottom-0 right-0" />
                       )}
                     </div>
-                  </div>
+
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold truncate">
+                        @{activeConversation.peer.username}
+                      </div>
+                      <div className="text-[11px] flex items-center gap-1.5 truncate">
+                        {typingPeers[activeConversation.id] ? (
+                          <span className="text-emerald-400 font-medium">typing...</span>
+                        ) : activeConversation.peer.isBlockedByMe ? (
+                          <span className="text-red-400">Blocked by you</span>
+                        ) : activeConversation.peer.isOnline ? (
+                          <span className="text-emerald-400">Online</span>
+                        ) : activeConversation.peer.lastActiveAt ? (
+                          <span className={`tabular-nums truncate ${isDark ? 'text-cyan-200/70' : 'text-slate-500'}`}>
+                            Active{' '}
+                            {new Date(activeConversation.peer.lastActiveAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        ) : (
+                          <span className={isDark ? 'text-cyan-200/70' : 'text-slate-500'}>
+                            Tap for info
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                   <button
                     type="button"
                     onClick={() => {
                       setShowMessageSearch(!showMessageSearch);
                       if (showMessageSearch) setMessageSearchQuery('');
                     }}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`min-w-[42px] min-h-[42px] flex items-center justify-center rounded-xl transition-colors ${
                       showMessageSearch
-                        ? 'bg-rose-600 text-white'
+                        ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white'
                         : isDark
-                        ? 'hover:bg-rose-950 text-rose-300'
-                        : 'hover:bg-rose-100 text-rose-700'
+                        ? 'hover:bg-teal-950 text-cyan-200'
+                        : 'hover:bg-teal-50 text-slate-700'
                     }`}
                     title="Search in conversation"
                     aria-label="Search in conversation"
@@ -1009,12 +1105,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   <button
                     type="button"
                     onClick={handleToggleBlockPeer}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`min-w-[42px] min-h-[42px] flex items-center justify-center rounded-xl transition-colors ${
                       activeConversation.peer.isBlockedByMe
                         ? 'bg-red-500/20 text-red-400'
                         : isDark
-                        ? 'hover:bg-rose-950 text-rose-300'
-                        : 'hover:bg-rose-100 text-rose-700'
+                        ? 'hover:bg-teal-950 text-cyan-200'
+                        : 'hover:bg-teal-50 text-slate-700'
                     }`}
                     title={
                       activeConversation.peer.isBlockedByMe
@@ -1033,10 +1129,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                         username: activeConversation.peer.username,
                       })
                     }
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`min-w-[42px] min-h-[42px] flex items-center justify-center rounded-xl transition-colors ${
                       isDark
-                        ? 'hover:bg-rose-950 text-rose-300'
-                        : 'hover:bg-rose-100 text-rose-700'
+                        ? 'hover:bg-teal-950 text-cyan-200'
+                        : 'hover:bg-teal-50 text-slate-700'
                     }`}
                     title={`Report @${activeConversation.peer.username}`}
                     aria-label="Report user"
@@ -1047,14 +1143,14 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowPeerDetails(!showPeerDetails)}
-                    className={`hidden lg:flex p-2 rounded-lg transition-colors ${
+                    className={`min-w-[42px] min-h-[42px] flex items-center justify-center rounded-xl transition-colors ${
                       showPeerDetails
-                        ? 'bg-rose-600 text-white'
+                        ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white'
                         : isDark
-                        ? 'hover:bg-rose-950 text-rose-300'
-                        : 'hover:bg-rose-100 text-rose-700'
+                        ? 'hover:bg-teal-950 text-cyan-200'
+                        : 'hover:bg-teal-50 text-slate-700'
                     }`}
-                    title="Toggle profile sidebar"
+                    title="Profile details"
                     aria-label="Toggle profile details"
                   >
                     <Info className="w-4 h-4" />
@@ -1065,24 +1161,24 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               {/* In-Conversation Search Bar */}
               {showMessageSearch && (
                 <div
-                  className={`px-4 py-2.5 border-b flex items-center gap-2 ${
-                    isDark ? 'bg-[#220712] border-rose-900/60' : 'bg-rose-50 border-rose-200'
+                  className={`px-4 py-2.5 border-b flex items-center gap-2 shrink-0 ${
+                    isDark ? 'bg-[#071829] border-teal-900/60' : 'bg-teal-50/70 border-teal-200'
                   }`}
                 >
-                  <Search className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  <Search className="w-4 h-4 text-emerald-400 shrink-0" />
                   <input
                     type="text"
                     autoFocus
                     value={messageSearchQuery}
                     onChange={(e) => setMessageSearchQuery(e.target.value)}
-                    placeholder="Search messages in this conversation..."
-                    className="flex-1 bg-transparent text-xs focus:outline-none"
+                    placeholder="Search messages in this chat..."
+                    className="flex-1 bg-transparent text-base sm:text-xs focus:outline-none min-h-[36px]"
                   />
                   {messageSearchQuery && (
                     <button
                       type="button"
                       onClick={() => setMessageSearchQuery('')}
-                      className="text-xs text-rose-400 hover:underline"
+                      className="text-xs text-emerald-400 hover:underline px-2 py-1"
                     >
                       Clear
                     </button>
@@ -1093,10 +1189,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               {/* Message Request Banner (Requirement 34) */}
               {activeConversation.status === 'pending' && !activeConversation.isInitiatedByMe && (
                 <div
-                  className={`px-4 py-3 border-b flex flex-wrap items-center justify-between gap-3 ${
+                  className={`px-4 py-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0 ${
                     isDark
-                      ? 'bg-rose-950/60 border-rose-800/70'
-                      : 'bg-rose-50 border-rose-200'
+                      ? 'bg-teal-950/60 border-teal-800/70'
+                      : 'bg-teal-50 border-teal-200'
                   }`}
                 >
                   <div className="text-xs">
@@ -1109,7 +1205,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     <button
                       type="button"
                       onClick={handleAcceptRequest}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg transition-colors whitespace-nowrap"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-500 hover:to-emerald-400 rounded-xl transition-all whitespace-nowrap"
                     >
                       <UserCheck className="w-3.5 h-3.5" />
                       <span>Accept</span>
@@ -1117,10 +1213,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     <button
                       type="button"
                       onClick={handleDeclineRequest}
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap ${
+                      className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
                         isDark
-                          ? 'border-rose-800 hover:bg-rose-950 text-white'
-                          : 'border-rose-300 hover:bg-white text-rose-900'
+                          ? 'border-teal-800 hover:bg-teal-950 text-white'
+                          : 'border-teal-300 hover:bg-white text-slate-900'
                       }`}
                     >
                       <UserX className="w-3.5 h-3.5" />
@@ -1129,7 +1225,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     <button
                       type="button"
                       onClick={handleToggleBlockPeer}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-300 border border-red-500/40 hover:bg-red-500/10 rounded-lg transition-colors whitespace-nowrap"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold text-red-300 border border-red-500/40 hover:bg-red-500/10 rounded-xl transition-colors whitespace-nowrap"
                     >
                       <ShieldBan className="w-3.5 h-3.5" />
                       <span>Block</span>
@@ -1139,17 +1235,20 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               )}
 
               {/* Message History Stream */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+              <div
+                className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-3"
+                onClick={() => setSelectedMessageId(null)}
+              >
                 {hasMoreMessages && (
                   <div className="text-center pb-2">
                     <button
                       type="button"
                       disabled={loadingOlder}
                       onClick={handleLoadOlderMessages}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                      className={`px-4 py-2 min-h-[40px] text-xs font-medium rounded-xl border transition-colors ${
                         isDark
-                          ? 'border-rose-900 bg-[#220712] hover:bg-rose-950 text-rose-200'
-                          : 'border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-900'
+                          ? 'border-teal-900 bg-[#071829] hover:bg-teal-950 text-cyan-100'
+                          : 'border-teal-200 bg-teal-50 hover:bg-teal-100 text-slate-900'
                       }`}
                     >
                       {loadingOlder ? 'Loading older messages...' : 'Load older messages'}
@@ -1158,7 +1257,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 )}
 
                 {messagesLoading ? (
-                  <div className="py-12 text-center text-xs text-rose-300/70">
+                  <div className="py-12 text-center text-xs text-cyan-200/70">
                     Loading messages...
                   </div>
                 ) : messagesError ? (
@@ -1167,9 +1266,9 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     <p className="text-xs text-red-400">{messagesError}</p>
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="py-16 text-center space-y-2">
+                  <div className="py-16 text-center space-y-2 px-4">
                     <p className="text-sm font-semibold">Start the conversation.</p>
-                    <p className={`text-xs ${isDark ? 'text-rose-200/70' : 'text-rose-800/70'}`}>
+                    <p className={`text-xs ${isDark ? 'text-cyan-100/70' : 'text-slate-600'}`}>
                       Send a message below to chat privately with @{activeConversation.peer.username}.
                     </p>
                   </div>
@@ -1182,18 +1281,19 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                       new Date(msg.createdAt).getTime() -
                         new Date(prev.createdAt).getTime() <
                         5 * 60 * 1000;
+                    const isActionOpen = selectedMessageId === msg.id;
 
                     return (
                       <div
                         key={msg.id}
                         className={`group flex flex-col ${
                           msg.isMine ? 'items-end' : 'items-start'
-                        } ${isSameSenderAsPrev ? 'mt-1' : 'mt-4'}`}
+                        } ${isSameSenderAsPrev ? 'mt-1' : 'mt-3.5'}`}
                       >
                         {!isSameSenderAsPrev && (
                           <div
                             className={`flex items-center gap-1.5 mb-1 px-1 text-[11px] ${
-                              isDark ? 'text-rose-300/70' : 'text-rose-800/70'
+                              isDark ? 'text-cyan-200/70' : 'text-slate-500'
                             }`}
                           >
                             <span className="font-semibold">@{msg.senderUsername}</span>
@@ -1208,30 +1308,40 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                         )}
 
                         <div
-                          className={`flex items-center gap-2 max-w-[85%] sm:max-w-[72%] ${
+                          className={`flex items-center gap-2 max-w-[88%] sm:max-w-[74%] ${
                             msg.isMine ? 'flex-row-reverse' : 'flex-row'
                           }`}
                         >
-                          {/* Message Bubble: Rich Pinked Red for sent, Crisp White / Deep Ruby for received */}
+                          {/* Message Bubble: Blue & Green Gradient for sent, Crisp White / Deep Ocean for received */}
                           <div
-                            className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words ${
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!msg.isDeleted) {
+                                setSelectedMessageId((prevId) =>
+                                  prevId === msg.id ? null : msg.id
+                                );
+                              }
+                            }}
+                            className={`rounded-2xl px-3.5 sm:px-4 py-2.5 text-sm leading-relaxed break-words cursor-pointer select-text transition-transform active:scale-[0.99] ${
                               msg.isDeleted
                                 ? isDark
-                                  ? 'bg-[#220712]/60 border border-rose-900/60 text-rose-300/50 italic'
-                                  : 'bg-rose-50 border border-rose-200 text-rose-400 italic'
+                                  ? 'bg-[#071829]/60 border border-teal-900/60 text-cyan-200/50 italic'
+                                  : 'bg-teal-50/50 border border-teal-200 text-slate-400 italic'
                                 : msg.isMine
-                                ? 'bg-rose-600 text-white font-medium shadow-xs'
+                                ? 'bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 text-white font-medium shadow-xs'
                                 : isDark
-                                ? 'bg-white text-rose-950 font-medium shadow-xs'
-                                : 'bg-rose-50 border border-rose-200 text-rose-950'
+                                ? 'bg-[#0A2239] border border-teal-800/70 text-white font-medium shadow-xs'
+                                : 'bg-teal-50/70 border border-teal-200 text-slate-900'
                             }`}
                           >
                             {msg.replyTo && !msg.isDeleted && (
                               <div
-                                className={`mb-2 pl-2.5 py-1 border-l-2 text-xs rounded ${
+                                className={`mb-2 px-2.5 py-1.5 text-xs rounded-xl border ${
                                   msg.isMine
-                                    ? 'border-white/70 bg-rose-700/60 text-white'
-                                    : 'border-rose-600 bg-rose-100 text-rose-950'
+                                    ? 'border-white/30 bg-black/20 text-white'
+                                    : isDark
+                                    ? 'border-teal-700 bg-[#04101E] text-cyan-100'
+                                    : 'border-teal-300 bg-white/80 text-slate-800'
                                 }`}
                               >
                                 <div className="font-semibold text-[11px]">
@@ -1243,19 +1353,19 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
                             {/* Attachment from 'chats' bucket */}
                             {!msg.isDeleted && msg.attachment && (
-                              <div className="mb-2">
+                              <div className="mb-2" onClick={(e) => e.stopPropagation()}>
                                 {msg.attachment.mimeType.startsWith('image/') ? (
                                   <a
                                     href={api.getAttachmentUrl(msg.attachment.id)}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="block overflow-hidden rounded-lg border border-white/20"
+                                    className="block overflow-hidden rounded-xl border border-white/20"
                                   >
                                     <img
                                       src={api.getAttachmentUrl(msg.attachment.id)}
                                       alt={msg.attachment.fileName}
                                       referrerPolicy="no-referrer"
-                                      className="max-h-60 w-auto object-cover rounded-lg"
+                                      className="max-h-60 w-auto object-cover rounded-xl"
                                     />
                                   </a>
                                 ) : (
@@ -1263,10 +1373,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                     href={api.getAttachmentUrl(msg.attachment.id)}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs font-semibold ${
+                                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold ${
                                       msg.isMine
-                                        ? 'border-white/30 bg-rose-700/50 text-white hover:bg-rose-700'
-                                        : 'border-rose-300 bg-rose-100/70 text-rose-950 hover:bg-rose-200/70'
+                                        ? 'border-white/30 bg-black/20 text-white hover:bg-black/30'
+                                        : isDark
+                                        ? 'border-teal-700 bg-[#04101E] text-cyan-100 hover:bg-teal-950'
+                                        : 'border-teal-300 bg-white text-slate-900 hover:bg-teal-100/60'
                                     }`}
                                   >
                                     <FileText className="w-4 h-4 shrink-0" />
@@ -1285,8 +1397,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                             <div
                               className={`flex items-center justify-end gap-1.5 mt-1 text-[10px] tabular-nums ${
                                 msg.isMine
-                                  ? 'text-rose-100/85'
-                                  : 'text-rose-800/70'
+                                  ? 'text-cyan-50/90'
+                                  : isDark
+                                  ? 'text-cyan-200/70'
+                                  : 'text-slate-500'
                               }`}
                             >
                               {msg.editedAt && !msg.isDeleted && <span>edited ·</span>}
@@ -1302,13 +1416,14 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                             </div>
                           </div>
 
-                          {/* Hover Action Controls */}
+                          {/* Desktop Hover Action Controls */}
                           {!msg.isDeleted && (
                             <div
-                              className={`opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 p-1 rounded-lg border ${
+                              onClick={(e) => e.stopPropagation()}
+                              className={`hidden md:flex opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity items-center gap-0.5 p-1 rounded-xl border shrink-0 ${
                                 isDark
-                                  ? 'bg-[#220712] border-rose-800 text-rose-200'
-                                  : 'bg-white border-rose-200 text-rose-700 shadow-xs'
+                                  ? 'bg-[#071829] border-teal-800 text-cyan-100'
+                                  : 'bg-white border-teal-200 text-slate-700 shadow-xs'
                               }`}
                             >
                               <button
@@ -1317,7 +1432,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                   setEditingMessage(null);
                                   setReplyingTo(msg);
                                 }}
-                                className="p-1 hover:text-rose-400 rounded"
+                                className="p-1.5 hover:text-emerald-400 rounded-lg"
                                 title="Reply"
                                 aria-label="Reply to message"
                               >
@@ -1327,12 +1442,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                               <button
                                 type="button"
                                 onClick={() => void handleCopyMessage(msg)}
-                                className="p-1 hover:text-rose-400 rounded"
+                                className="p-1.5 hover:text-emerald-400 rounded-lg"
                                 title="Copy message"
                                 aria-label="Copy message"
                               >
                                 {copiedMessageId === msg.id ? (
-                                  <Check className="w-3.5 h-3.5 text-rose-400" />
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
                                 ) : (
                                   <Copy className="w-3.5 h-3.5" />
                                 )}
@@ -1347,7 +1462,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                       setEditingMessage(msg);
                                       setComposerText(msg.body);
                                     }}
-                                    className="p-1 hover:text-rose-400 rounded"
+                                    className="p-1.5 hover:text-emerald-400 rounded-lg"
                                     title="Edit message"
                                     aria-label="Edit message"
                                   >
@@ -1356,7 +1471,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => void handleDeleteOwnMessage(msg.id)}
-                                    className="p-1 hover:text-red-400 rounded"
+                                    className="p-1.5 hover:text-red-400 rounded-lg"
                                     title="Delete message"
                                     aria-label="Delete message"
                                   >
@@ -1373,7 +1488,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                       messagePreview: msg.body,
                                     })
                                   }
-                                  className="p-1 hover:text-rose-400 rounded"
+                                  className="p-1.5 hover:text-emerald-400 rounded-lg"
                                   title="Report message"
                                   aria-label="Report message"
                                 >
@@ -1383,6 +1498,91 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                             </div>
                           )}
                         </div>
+
+                        {/* Mobile Tap-to-Reveal Action Pill Bar */}
+                        {!msg.isDeleted && isActionOpen && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className={`flex md:hidden items-center gap-1 mt-1.5 p-1 rounded-xl border shadow-sm ${
+                              isDark
+                                ? 'bg-[#071829] border-teal-800 text-cyan-50'
+                                : 'bg-white border-teal-200 text-slate-900'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingMessage(null);
+                                setReplyingTo(msg);
+                                setSelectedMessageId(null);
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium rounded-lg hover:bg-emerald-500/20"
+                            >
+                              <Reply className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Reply</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => void handleCopyMessage(msg)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium rounded-lg hover:bg-emerald-500/20"
+                            >
+                              {copiedMessageId === msg.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+
+                            {msg.isMine ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReplyingTo(null);
+                                    setEditingMessage(msg);
+                                    setComposerText(msg.body);
+                                    setSelectedMessageId(null);
+                                  }}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium rounded-lg hover:bg-emerald-500/20"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDeleteOwnMessage(msg.id)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium text-red-400 rounded-lg hover:bg-red-500/15"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedMessageId(null);
+                                  setReportTarget({
+                                    username: msg.senderUsername,
+                                    messageId: msg.id,
+                                    messagePreview: msg.body,
+                                  });
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium text-emerald-400 rounded-lg hover:bg-emerald-500/20"
+                              >
+                                <Flag className="w-3.5 h-3.5" />
+                                <span>Report</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -1393,24 +1593,24 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
               {/* Typing Indicator Bar */}
               {typingPeers[activeConversation.id] && (
-                <div className="px-6 py-1 text-xs text-rose-400 font-medium">
+                <div className="px-4 sm:px-6 py-1 text-xs text-emerald-400 font-medium shrink-0">
                   @{typingPeers[activeConversation.id]} is typing...
                 </div>
               )}
 
-              {/* Composer Area */}
+              {/* Composer Area (Safe-Area Aware on Mobile) */}
               <div
-                className={`p-3 sm:p-4 border-t shrink-0 ${
-                  isDark ? 'bg-[#1B060E] border-rose-900/60' : 'bg-rose-50/50 border-rose-200'
+                className={`p-2.5 sm:p-4 border-t pb-safe shrink-0 ${
+                  isDark ? 'bg-[#051221] border-teal-900/60' : 'bg-teal-50/40 border-teal-200/80'
                 }`}
               >
                 {sendError && (
-                  <div className="mb-2.5 px-3 py-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-300 text-xs flex items-center justify-between">
+                  <div className="mb-2.5 px-3 py-2 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 text-xs flex items-center justify-between">
                     <span>{sendError}</span>
                     <button
                       type="button"
                       onClick={() => setSendError(null)}
-                      className="text-xs underline ml-2"
+                      className="text-xs underline ml-2 px-2 py-1"
                     >
                       Dismiss
                     </button>
@@ -1420,7 +1620,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 {/* Blocked State Notice (Requirement 14) */}
                 {activeConversation.peer.isBlockedByMe ? (
                   <div
-                    className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+                    className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs ${
                       isDark
                         ? 'bg-red-950/30 border-red-800/50 text-red-200'
                         : 'bg-red-50 border-red-200 text-red-900'
@@ -1433,7 +1633,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     <button
                       type="button"
                       onClick={handleToggleBlockPeer}
-                      className="px-3 py-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white rounded-lg whitespace-nowrap"
+                      className="px-4 py-2 min-h-[40px] text-xs font-semibold bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-500 hover:to-emerald-400 text-white rounded-xl whitespace-nowrap"
                     >
                       Unblock @{activeConversation.peer.username}
                     </button>
@@ -1442,8 +1642,8 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   <div
                     className={`p-3 rounded-xl border text-center text-xs ${
                       isDark
-                        ? 'bg-[#220712] border-rose-900/60 text-rose-200/80'
-                        : 'bg-rose-50 border-rose-200 text-rose-800'
+                        ? 'bg-[#071829] border-teal-900/60 text-cyan-100/80'
+                        : 'bg-teal-50 border-teal-200 text-slate-700'
                     }`}
                   >
                     You cannot send messages to @{activeConversation.peer.username}.
@@ -1453,28 +1653,28 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     {/* Reply, Edit, or Pending Attachment Banner */}
                     {(replyingTo || editingMessage || pendingAttachment) && (
                       <div
-                        className={`mb-2 px-3 py-2 rounded-lg border flex items-center justify-between gap-2 text-xs ${
+                        className={`mb-2 px-3 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs ${
                           isDark
-                            ? 'bg-[#14040A] border-rose-800/80 text-rose-100'
-                            : 'bg-white border-rose-200 text-rose-900'
+                            ? 'bg-[#030B17] border-teal-800/80 text-cyan-50'
+                            : 'bg-white border-teal-200 text-slate-900'
                         }`}
                       >
                         <div className="min-w-0 truncate">
                           {editingMessage ? (
                             <span>
-                              <strong className="text-rose-400">Editing message:</strong>{' '}
+                              <strong className="text-emerald-400">Editing:</strong>{' '}
                               {editingMessage.body}
                             </span>
                           ) : pendingAttachment ? (
                             <span>
-                              <strong className="text-rose-400">
-                                Attached (chats bucket):
+                              <strong className="text-emerald-400">
+                                Attached (chats):
                               </strong>{' '}
                               {pendingAttachment.fileName}
                             </span>
                           ) : (
                             <span>
-                              <strong className="text-rose-400">
+                              <strong className="text-emerald-400">
                                 Replying to @{replyingTo?.senderUsername}:
                               </strong>{' '}
                               {replyingTo?.body}
@@ -1491,10 +1691,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                               setComposerText('');
                             }
                           }}
-                          className="p-1 rounded hover:bg-rose-900/40"
+                          className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg hover:bg-teal-900/40 shrink-0"
                           aria-label="Cancel"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     )}
@@ -1510,10 +1710,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className={`p-2.5 rounded-xl border transition-colors shrink-0 ${
+                        className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border transition-colors shrink-0 ${
                           isDark
-                            ? 'bg-[#14040A] border-rose-800/80 text-rose-300 hover:text-white hover:bg-rose-950'
-                            : 'bg-white border-rose-300 text-rose-700 hover:bg-rose-50'
+                            ? 'bg-[#030B17] border-teal-800/80 text-cyan-200 hover:text-white hover:bg-teal-950'
+                            : 'bg-white border-teal-300 text-teal-700 hover:bg-teal-50'
                         }`}
                         title="Attach image or file to chats bucket"
                         aria-label="Attach file"
@@ -1526,20 +1726,20 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                         value={composerText}
                         onChange={handleComposerChange}
                         onKeyDown={handleComposerKeyDown}
-                        placeholder={`Message @${activeConversation.peer.username}... (Enter to send, Shift+Enter for newline)`}
-                        className={`flex-1 px-3.5 py-2.5 text-sm rounded-xl border resize-none max-h-32 focus:outline-none focus:ring-2 focus:ring-rose-500 ${
+                        placeholder={`Message @${activeConversation.peer.username}...`}
+                        className={`flex-1 px-3.5 py-2.5 min-h-[44px] text-base sm:text-sm rounded-xl border resize-none max-h-28 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                           isDark
-                            ? 'bg-[#14040A] border-rose-800/80 text-white placeholder-rose-400/50'
-                            : 'bg-white border-rose-300 text-rose-950 placeholder-rose-400'
+                            ? 'bg-[#030B17] border-teal-800/80 text-white placeholder-cyan-400/50'
+                            : 'bg-white border-teal-300 text-slate-900 placeholder-slate-400'
                         }`}
                       />
                       <button
                         type="submit"
                         disabled={sending || (!composerText.trim() && !pendingAttachment)}
-                        className="px-4 py-2.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 rounded-xl transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap shadow-xs"
+                        className="px-4 min-h-[44px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 active:scale-[0.98] disabled:opacity-40 rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap shadow-xs"
                       >
                         <Send className="w-4 h-4" />
-                        <span>{editingMessage ? 'Save' : 'Send'}</span>
+                        <span className="hidden sm:inline">{editingMessage ? 'Save' : 'Send'}</span>
                       </button>
                     </form>
                   </>
@@ -1550,110 +1750,234 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         </main>
 
         {/* ====================================================================
-            RIGHT SIDEBAR: PEER PROFILE & CONVERSATION DETAILS
+            RIGHT SIDEBAR (Desktop) & BOTTOM SHEET (Mobile): PEER PROFILE DETAILS
             ==================================================================== */}
         {activeConversation && showPeerDetails && (
-          <aside
-            className={`hidden lg:flex w-72 flex-col border-l p-5 space-y-6 shrink-0 ${
-              isDark
-                ? 'bg-[#1B060E] border-rose-900/60'
-                : 'bg-rose-50/40 border-rose-200'
-            }`}
-          >
-            <div className="text-center space-y-3 pt-2">
-              <div className="relative inline-block">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto select-none"
-                  style={{ backgroundColor: activeConversation.peer.avatarColor }}
-                >
-                  {activeConversation.peer.username.slice(0, 2).toUpperCase()}
-                </div>
-                {activeConversation.peer.isOnline && (
-                  <span className="w-3.5 h-3.5 rounded-full bg-rose-400 ring-2 ring-[#1B060E] absolute bottom-0 right-0" />
-                )}
-              </div>
-
-              <div>
-                <h3 className="text-base font-bold">@{activeConversation.peer.username}</h3>
-                <p className={`text-xs mt-0.5 ${isDark ? 'text-rose-300/70' : 'text-rose-700/70'}`}>
-                  {activeConversation.peer.isOnline ? 'Online now' : 'Offline'}
-                </p>
-              </div>
-            </div>
-
+          <>
+            {/* Mobile / Tablet Bottom Sheet Overlay (< lg) */}
             <div
-              className={`border-t pt-4 space-y-3 text-xs ${
-                isDark ? 'border-rose-900/60' : 'border-rose-200'
-              }`}
+              className="fixed inset-0 z-40 flex items-end justify-center bg-black/70 backdrop-blur-xs lg:hidden"
+              onClick={() => setShowPeerDetails(false)}
             >
-              <div>
-                <span className={`block mb-1 ${isDark ? 'text-rose-300/60' : 'text-rose-700/70'}`}>
-                  Bio
-                </span>
-                <p className={isDark ? 'text-white' : 'text-rose-950'}>
-                  {activeConversation.peer.bio || 'No bio set.'}
-                </p>
-              </div>
-
-              <div>
-                <span className={`block mb-1 ${isDark ? 'text-rose-300/60' : 'text-rose-700/70'}`}>
-                  Member Since
-                </span>
-                <p className="tabular-nums">
-                  {new Date(activeConversation.peer.createdAt).toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </p>
-              </div>
-            </div>
-
-            <div
-              className={`border-t pt-4 space-y-2 ${
-                isDark ? 'border-rose-900/60' : 'border-rose-200'
-              }`}
-            >
-              <button
-                type="button"
-                onClick={handleToggleBlockPeer}
-                className={`w-full flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap ${
-                  activeConversation.peer.isBlockedByMe
-                    ? 'border-rose-500/40 text-rose-300 hover:bg-rose-500/10'
-                    : 'border-red-500/40 text-red-400 hover:bg-red-500/10'
-                }`}
-              >
-                {activeConversation.peer.isBlockedByMe ? (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Unblock @{activeConversation.peer.username}</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldBan className="w-4 h-4" />
-                    <span>Block @{activeConversation.peer.username}</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setReportTarget({
-                    username: activeConversation.peer.username,
-                  })
-                }
-                className={`w-full flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap ${
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full max-w-lg rounded-t-3xl border-t p-5 space-y-5 pb-safe ${
                   isDark
-                    ? 'border-rose-800/80 text-rose-200 hover:bg-rose-950'
-                    : 'border-rose-300 text-rose-900 hover:bg-rose-100'
+                    ? 'bg-[#071829] border-teal-900/70 text-white'
+                    : 'bg-white border-teal-200 text-slate-900'
                 }`}
               >
-                <Flag className="w-4 h-4 text-rose-500" />
-                <span>Report @{activeConversation.peer.username}</span>
-              </button>
+                <div className="-mt-2 pb-1 flex justify-center">
+                  <div
+                    className={`w-10 h-1.5 rounded-full ${
+                      isDark ? 'bg-teal-800/80' : 'bg-teal-200'
+                    }`}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold">Contact Profile</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowPeerDetails(false)}
+                    className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl hover:bg-teal-900/40 -mr-1"
+                    aria-label="Close contact info"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    <div
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold select-none"
+                      style={{ backgroundColor: activeConversation.peer.avatarColor }}
+                    >
+                      {activeConversation.peer.username.slice(0, 2).toUpperCase()}
+                    </div>
+                    {activeConversation.peer.isOnline && (
+                      <span className="w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-[#071829] absolute bottom-0 right-0" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-base font-bold truncate">
+                      @{activeConversation.peer.username}
+                    </h4>
+                    <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-200/70' : 'text-slate-500'}`}>
+                      {activeConversation.peer.isOnline ? 'Online now' : 'Offline'} · Joined{' '}
+                      {new Date(activeConversation.peer.createdAt).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  className={`p-3.5 rounded-2xl border text-xs space-y-1 ${
+                    isDark
+                      ? 'bg-[#040D1A]/70 border-teal-900/60'
+                      : 'bg-teal-50/60 border-teal-200'
+                  }`}
+                >
+                  <span className={`block font-semibold ${isDark ? 'text-cyan-200/70' : 'text-slate-500'}`}>
+                    Bio
+                  </span>
+                  <p className={isDark ? 'text-white' : 'text-slate-900'}>
+                    {activeConversation.peer.bio || 'No bio set.'}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleToggleBlockPeer();
+                      setShowPeerDetails(false);
+                    }}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
+                      activeConversation.peer.isBlockedByMe
+                        ? 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10'
+                        : 'border-red-500/40 text-red-400 hover:bg-red-500/10'
+                    }`}
+                  >
+                    {activeConversation.peer.isBlockedByMe ? (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Unblock</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldBan className="w-4 h-4" />
+                        <span>Block User</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPeerDetails(false);
+                      setReportTarget({
+                        username: activeConversation.peer.username,
+                      });
+                    }}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
+                      isDark
+                        ? 'border-teal-800/80 text-cyan-100 hover:bg-teal-950'
+                        : 'border-teal-300 text-slate-800 hover:bg-teal-50'
+                    }`}
+                  >
+                    <Flag className="w-4 h-4 text-emerald-400" />
+                    <span>Report User</span>
+                  </button>
+                </div>
+              </div>
             </div>
-          </aside>
+
+            {/* Desktop Right Sidebar (lg:flex) */}
+            <aside
+              className={`hidden lg:flex w-72 flex-col border-l p-5 space-y-6 shrink-0 ${
+                isDark
+                  ? 'bg-[#051221] border-teal-900/60'
+                  : 'bg-teal-50/40 border-teal-200'
+              }`}
+            >
+              <div className="text-center space-y-3 pt-2">
+                <div className="relative inline-block">
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto select-none"
+                    style={{ backgroundColor: activeConversation.peer.avatarColor }}
+                  >
+                    {activeConversation.peer.username.slice(0, 2).toUpperCase()}
+                  </div>
+                  {activeConversation.peer.isOnline && (
+                    <span className="w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-[#051221] absolute bottom-0 right-0" />
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold">@{activeConversation.peer.username}</h3>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-cyan-200/70' : 'text-slate-500'}`}>
+                    {activeConversation.peer.isOnline ? 'Online now' : 'Offline'}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className={`border-t pt-4 space-y-3 text-xs ${
+                  isDark ? 'border-teal-900/60' : 'border-teal-200'
+                }`}
+              >
+                <div>
+                  <span className={`block mb-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                    Bio
+                  </span>
+                  <p className={isDark ? 'text-white' : 'text-slate-900'}>
+                    {activeConversation.peer.bio || 'No bio set.'}
+                  </p>
+                </div>
+
+                <div>
+                  <span className={`block mb-1 ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                    Member Since
+                  </span>
+                  <p className="tabular-nums">
+                    {new Date(activeConversation.peer.createdAt).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className={`border-t pt-4 space-y-2 ${
+                  isDark ? 'border-teal-900/60' : 'border-teal-200'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={handleToggleBlockPeer}
+                  className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 min-h-[42px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
+                    activeConversation.peer.isBlockedByMe
+                      ? 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10'
+                      : 'border-red-500/40 text-red-400 hover:bg-red-500/10'
+                  }`}
+                >
+                  {activeConversation.peer.isBlockedByMe ? (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Unblock @{activeConversation.peer.username}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldBan className="w-4 h-4" />
+                      <span>Block @{activeConversation.peer.username}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReportTarget({
+                      username: activeConversation.peer.username,
+                    })
+                  }
+                  className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 min-h-[42px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
+                    isDark
+                      ? 'border-teal-800/80 text-cyan-100 hover:bg-teal-950'
+                      : 'border-teal-300 text-slate-800 hover:bg-teal-100/60'
+                  }`}
+                >
+                  <Flag className="w-4 h-4 text-emerald-400" />
+                  <span>Report @{activeConversation.peer.username}</span>
+                </button>
+              </div>
+            </aside>
+          </>
         )}
       </div>
 

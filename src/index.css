@@ -1,17 +1,36 @@
 @import "tailwindcss";
 
 @layer base {
+  html,
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
   }
 
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
   }
+
+  button,
+  a,
+  input,
+  textarea {
+    touch-action: manipulation;
+  }
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: max(0px, env(safe-area-inset-top));
+}
+
 
