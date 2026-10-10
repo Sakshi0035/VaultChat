@@ -1188,7 +1188,14 @@ async function startServer() {
                 id: row.last_msg_id,
                 senderUsername: row.last_msg_sender_username!,
                 isMine: row.last_msg_sender_id === user.id,
-                body: row.last_msg_deleted_at ? '' : row.last_msg_body || '',
+                body: row.last_msg_deleted_at
+                  ? ''
+                  : !row.last_msg_body ||
+                    /^Shared\s+.+\.(png|jpe?g|gif|webp|bmp|svg|heic|avif)$/i.test(
+                      row.last_msg_body.trim()
+                    )
+                  ? '📷 Photo'
+                  : row.last_msg_body,
                 isDeleted: Boolean(row.last_msg_deleted_at),
                 createdAt: row.last_msg_created_at!.toISOString(),
                 editedAt: row.last_msg_edited_at ? row.last_msg_edited_at.toISOString() : null,
@@ -1712,34 +1719,50 @@ async function startServer() {
         params
       );
 
-      const messages = messagesRes.rows.reverse().map((m) => ({
-        id: m.id,
-        conversationId: m.conversation_id,
-        senderUsername: m.sender_username,
-        isMine: m.sender_id === user.id,
-        body: m.deleted_at ? '' : m.body,
-        isDeleted: Boolean(m.deleted_at),
-        replyTo: m.reply_to_id
-          ? {
-              id: m.reply_to_id,
-              senderUsername: m.reply_to_sender_username || 'User',
-              body: m.reply_to_deleted_at ? 'Message deleted' : m.reply_to_body || '',
-            }
-          : null,
-        attachment:
-          !m.deleted_at && m.att_id
+      const messages = messagesRes.rows.reverse().map((m) => {
+        const isAutoFilenameBody =
+          Boolean(m.att_id) &&
+          (m.body === `Shared ${m.att_file_name}` ||
+            (Boolean(m.att_mime_type?.startsWith('image/')) &&
+              /^Shared\s+/i.test(m.body.trim())));
+        const cleanMsgBody = m.deleted_at || isAutoFilenameBody ? '' : m.body;
+        const rawReplyBody = m.reply_to_body || '';
+        const cleanReplyBody = m.reply_to_deleted_at
+          ? 'Message deleted'
+          : !rawReplyBody.trim() ||
+            /^Shared\s+.+\.(png|jpe?g|gif|webp|bmp|svg|heic|avif)$/i.test(rawReplyBody.trim())
+          ? '📷 Photo'
+          : rawReplyBody;
+
+        return {
+          id: m.id,
+          conversationId: m.conversation_id,
+          senderUsername: m.sender_username,
+          isMine: m.sender_id === user.id,
+          body: cleanMsgBody,
+          isDeleted: Boolean(m.deleted_at),
+          replyTo: m.reply_to_id
             ? {
-                id: m.att_id,
-                bucket: m.att_bucket || 'chats',
-                fileName: m.att_file_name || 'attachment',
-                mimeType: m.att_mime_type || 'application/octet-stream',
-                sizeBytes: m.att_size_bytes || 0,
+                id: m.reply_to_id,
+                senderUsername: m.reply_to_sender_username || 'User',
+                body: cleanReplyBody,
               }
             : null,
-        createdAt: m.created_at.toISOString(),
-        editedAt: m.edited_at ? m.edited_at.toISOString() : null,
-        isReadByPeer: m.is_read_by_peer,
-      }));
+          attachment:
+            !m.deleted_at && m.att_id
+              ? {
+                  id: m.att_id,
+                  bucket: m.att_bucket || 'chats',
+                  fileName: m.att_file_name || 'attachment',
+                  mimeType: m.att_mime_type || 'application/octet-stream',
+                  sizeBytes: m.att_size_bytes || 0,
+                }
+              : null,
+          createdAt: m.created_at.toISOString(),
+          editedAt: m.edited_at ? m.edited_at.toISOString() : null,
+          isReadByPeer: m.is_read_by_peer,
+        };
+      });
 
       res.json({
         messages,
@@ -1782,7 +1805,10 @@ async function startServer() {
         return;
       }
 
-      const cleanBody = rawBody || (hasAttachment ? `Shared ${attachment.fileName}` : '');
+      const isImageAttachment =
+        hasAttachment && String(attachment.mimeType).toLowerCase().startsWith('image/');
+      const cleanBody =
+        rawBody || (hasAttachment && !isImageAttachment ? `Shared ${attachment.fileName}` : '');
       if (cleanBody.length > 4000) {
         res.status(400).json({ error: 'Message cannot exceed 4,000 characters.' });
         return;
@@ -1856,7 +1882,12 @@ async function startServer() {
           replyPreview = {
             id: r.id,
             senderUsername: r.sender_username,
-            body: r.deleted_at ? 'Message deleted' : r.body,
+            body: r.deleted_at
+              ? 'Message deleted'
+              : !r.body.trim() ||
+                /^Shared\s+.+\.(png|jpe?g|gif|webp|bmp|svg|heic|avif)$/i.test(r.body.trim())
+              ? '📷 Photo'
+              : r.body,
           };
         }
       }
@@ -1969,7 +2000,7 @@ async function startServer() {
             user.id,
             conversationId,
             `New message from @${user.username}`,
-            cleanBody.slice(0, 120),
+            (cleanBody || (isImageAttachment ? '📷 Photo' : '📎 Attachment')).slice(0, 120),
           ]
         );
 

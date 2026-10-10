@@ -1285,7 +1285,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                             ) : (
                               <>
                                 {conv.lastMessage.isMine ? 'You: ' : ''}
-                                {conv.lastMessage.body}
+                                {!conv.lastMessage.body ||
+                                /^Shared\s+.+\.(png|jpe?g|gif|webp|bmp|svg|heic|avif)$/i.test(
+                                  conv.lastMessage.body.trim()
+                                )
+                                  ? '📷 Photo'
+                                  : conv.lastMessage.body}
                               </>
                             )
                           ) : (
@@ -1955,26 +1960,22 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
                             {/* Attachment from 'chats' bucket */}
                             {!msg.isDeleted && msg.attachment && (
-                              <div className="mb-2" onClick={(e) => e.stopPropagation()}>
+                              <div className="mb-1.5">
                                 {msg.attachment.mimeType.startsWith('image/') ? (
-                                  <a
-                                    href={api.getAttachmentUrl(msg.attachment.id)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block overflow-hidden rounded-xl border border-white/20"
-                                  >
+                                  <div className="block overflow-hidden rounded-xl border border-white/20">
                                     <img
                                       src={api.getAttachmentUrl(msg.attachment.id)}
-                                      alt={msg.attachment.fileName}
+                                      alt="Shared photo"
                                       referrerPolicy="no-referrer"
-                                      className="max-h-60 w-auto object-cover rounded-xl"
+                                      className="max-h-64 w-auto object-cover rounded-xl"
                                     />
-                                  </a>
+                                  </div>
                                 ) : (
                                   <a
                                     href={api.getAttachmentUrl(msg.attachment.id)}
                                     target="_blank"
                                     rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
                                     className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold ${
                                       msg.isMine
                                         ? 'border-white/30 bg-black/20 text-white hover:bg-black/30'
@@ -1992,9 +1993,16 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
                             {msg.isDeleted ? (
                               <span>Message deleted</span>
-                            ) : (
-                              <div className="whitespace-pre-wrap">{msg.body}</div>
-                            )}
+                            ) : (() => {
+                                const isAutoImageFilename =
+                                  Boolean(msg.attachment?.mimeType.startsWith('image/')) &&
+                                  (msg.body === `Shared ${msg.attachment?.fileName}` ||
+                                    /^Shared\s+/i.test(msg.body.trim()));
+                                const visibleBody = isAutoImageFilename ? '' : msg.body;
+                                return visibleBody.trim() ? (
+                                  <div className="whitespace-pre-wrap">{visibleBody}</div>
+                                ) : null;
+                              })()}
 
                             <div
                               className={`flex items-center justify-end gap-1.5 mt-1 text-[10px] tabular-nums ${
@@ -2312,16 +2320,34 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                           {editingMessage.body}
                         </span>
                       ) : pendingAttachment ? (
-                        <span>
-                          <strong className="text-emerald-400">Attached (chats):</strong>{' '}
-                          {pendingAttachment.fileName}
-                        </span>
+                        pendingAttachment.mimeType.startsWith('image/') ? (
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={`data:${pendingAttachment.mimeType};base64,${pendingAttachment.dataBase64}`}
+                              alt="Photo preview"
+                              className="w-10 h-10 rounded-lg object-cover border border-emerald-400/50 shrink-0"
+                            />
+                            <span className="font-semibold text-emerald-400">
+                              📷 Photo ready to send
+                            </span>
+                          </div>
+                        ) : (
+                          <span>
+                            <strong className="text-emerald-400">Attached:</strong>{' '}
+                            {pendingAttachment.fileName}
+                          </span>
+                        )
                       ) : (
                         <span>
                           <strong className="text-emerald-400">
                             Replying to @{replyingTo?.senderUsername}:
                           </strong>{' '}
-                          {replyingTo?.body}
+                          {replyingTo?.body &&
+                          !/^Shared\s+.+\.(png|jpe?g|gif|webp|bmp|svg|heic|avif)$/i.test(
+                            replyingTo.body.trim()
+                          )
+                            ? replyingTo.body
+                            : '📷 Photo'}
                         </span>
                       )}
                     </div>
