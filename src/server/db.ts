@@ -4,11 +4,17 @@ import crypto from 'crypto';
 import pg from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const { Pool } = pg;
 
-let currentConnectionString = process.env.DATABASE_URL || '';
+function normalizeNeonUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  // Upgrade sslmode=require to sslmode=verify-full to silence pg v8/v9 deprecation warning
+  return rawUrl.replace(/sslmode=require\b/g, 'sslmode=verify-full');
+}
+
+let currentConnectionString = normalizeNeonUrl(process.env.DATABASE_URL || '');
 let activePool: pg.Pool | null = null;
 let migrationsApplied = false;
 
@@ -32,7 +38,7 @@ export function isDatabaseConfigured(): boolean {
 }
 
 export function getPool(): pg.Pool {
-  const envUrl = process.env.DATABASE_URL || '';
+  const envUrl = normalizeNeonUrl(process.env.DATABASE_URL || '');
   if (!activePool || (envUrl && envUrl !== currentConnectionString)) {
     if (envUrl) {
       currentConnectionString = envUrl;

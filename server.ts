@@ -34,9 +34,9 @@ import {
   disconnectUserSessions,
 } from './src/server/ws.ts';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const SESSION_COOKIE_NAME = 'vaultchat_session';
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -2471,7 +2471,7 @@ async function startServer() {
   }
 
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`[VaultChat] Server listening on http://0.0.0.0:${PORT}`);
+    console.log(`[VaultChat] Server running! Open in your browser: http://localhost:${PORT}`);
   });
 }
 
