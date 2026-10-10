@@ -1,0 +1,5 @@
+{
+  "name": "VaultChat — Private Username Messaging",
+  "description": "Private, zero-email real-time messaging powered by Neon PostgreSQL with strict username/password authentication and automatic 9-month inactivity cleanup.",
+  "requestFramePermissions": []
+}
