@@ -27,6 +27,7 @@ import {
   Plus,
   Smile,
   Camera,
+  ChevronDown,
 } from 'lucide-react';
 import { api, getTabSessionToken } from '../lib/api.ts';
 import {
@@ -53,29 +54,80 @@ interface ChatWorkspaceProps {
   isDark: boolean;
 }
 
+const QUICK_EMOJI_COMBOS: { label: string; text: string }[] = [
+  { label: '😘💋 Kisses', text: '😘💋' },
+  { label: '🌙😘 Goodnight Kiss', text: 'Goodnight 😘💋🌙✨' },
+  { label: '😴💤 Sweet Dreams', text: 'Sweet dreams 🌙😴💤✨' },
+  { label: '❤️🥰 Love You', text: 'Love you ❤️🥰😘' },
+  { label: '🫂💖 Hugs & Kisses', text: '🫂💖😘💋' },
+  { label: '🌙🌟 Good Night', text: 'Good night 🌙🌟😴' },
+];
+
 const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
   {
-    label: 'Smileys',
+    label: '😘 Kiss & Night',
+    emojis: [
+      '😘', '💋', '😗', '😙', '😚', '🥰', '😍', '🤩', '😻', '😽',
+      '💏', '👩‍❤️‍💋‍👨', '💑', '👩‍❤️‍👨', '🫦', '👅', '🫂', '🤗', '🫶', '❤️‍🔥',
+      '🌙', '🌛', '🌜', '🌚', '🌝', '🌕', '😴', '💤', '🥱', '🛌',
+      '🛏️', '🧸', '🌌', '🌠', '⭐', '🌟', '✨', '💫', '🌃', '🕯️',
+      '❤️', '🩷', '💖', '💕', '💞', '💓', '💗', '💘', '💝', '💌',
+      '🌹', '💐', '🌸', '🌺', '🌷', '🦉', '☕', '🍵', '😇', '🙏',
+    ],
+  },
+  {
+    label: '🌙 Goodnight',
+    emojis: [
+      '🌙', '😴', '💤', '🥱', '🛌', '🛏️', '🧸', '🌛', '🌜', '🌚',
+      '🌝', '🌕', '🌖', '🌗', '🌘', '🌑', '🌒', '🌓', '🌔', '🌌',
+      '🌠', '⭐', '🌟', '✨', '💫', '🌃', '🌆', '🕯️', '🦉', '🦋',
+      '☕', '🍵', '🥛', '🍯', '🧦', '🧣', '🪐', '☄️', '😇', '🙏',
+      '😘', '💋', '🥰', '🫂', '🤍', '🩵', '💙', '💜', '💖', '💌',
+    ],
+  },
+  {
+    label: '❤️ Love & Kiss',
+    emojis: [
+      '😘', '💋', '😗', '😙', '😚', '🥰', '😍', '😻', '😽', '🫦',
+      '💏', '👩‍❤️‍💋‍👨', '👨‍❤️‍💋‍👨', '👩‍❤️‍💋‍👩', '💑', '👩‍❤️‍👨', '🫂', '🤗', '🫶', '💌',
+      '❤️', '🩷', '🧡', '💛', '💚', '💙', '🩵', '💜', '🖤', '🤍',
+      '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '❤️‍🔥',
+      '❤️‍🩹', '💔', '💐', '🌹', '🥀', '🌷', '🌺', '🌸', '💍', '💎',
+      '🎁', '🍫', '🍓', '🍒', '🥂', '🕯️', '🧸', '👑', '✨', '🔥',
+    ],
+  },
+  {
+    label: '😀 Smileys',
     emojis: [
       '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
-      '🙂', '😉', '😍', '🥰', '😘', '😜', '🤪', '😎', '🤩', '🥳',
-      '😏', '😒', '😔', '😢', '😭', '😤', '🤯', '😱', '🤔', '😴',
+      '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
+      '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸',
+      '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️',
+      '😣', '😖', '😫', '😩', '🥺', '🥹', '😢', '😭', '😤', '😠',
+      '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥',
+      '😓', '🤗', '🤔', '🤭', '🫢', '🫣', '🤫', '🤥', '😶', '😐',
+      '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴',
+      '🤤', '😪', '😵', '😵‍💫', '🤐', '🥴', '🤢', '🤮', '🤧', '😷',
     ],
   },
   {
-    label: 'Gestures',
+    label: '👋 Hands & People',
     emojis: [
-      '👋', '🤚', '✋', '🖖', '👌', '🤌', '✌️', '🤞', '🤟', '🤘',
-      '🤙', '👍', '👎', '👊', '✊', '👏', '🙌', '🤝', '🙏', '💪',
-      '🫶', '👀', '🔥', '💯', '✨', '🎉', '🎊', '🏆', '💎', '🚀',
+      '👋', '🤚', '🖐️', '✋', '🖖', '🫱', '🫲', '👌', '🤌', '🤏',
+      '✌️', '🤞', '🫰', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇',
+      '☝️', '🫵', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌',
+      '🫶', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🫂',
+      '💃', '🕺', '🙇', '🤦', '🤷', '🙆', '🙋', '👑', '👀', '🫦',
     ],
   },
   {
-    label: 'Hearts & Vibes',
+    label: '🎉 Fun & More',
     emojis: [
-      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💖', '💘',
-      '💝', '💞', '💕', '💓', '💗', '🌟', '💫', '🌈', '☀️', '🌙',
-      '⚡', '💥', '🎈', '🎁', '🥂', '☕', '🍕', '🍔', '🎂', '🎵',
+      '🔥', '✨', '🎉', '🎊', '🎈', '🎂', '🎁', '🏆', '🥇', '⚡',
+      '💯', '✅', '🚀', '💎', '🌈', '☀️', '🌊', '🍀', '🍕', '🍔',
+      '🍟', '🌮', '🍜', '🍣', '🍦', '🍩', '🍪', '🍫', '🍓', '🍒',
+      '☕', '🧋', '🍵', '🥂', '🍻', '🐶', '🐱', '🐰', '🦊', '🐻',
+      '🐼', '🐨', '🦁', '🦋', '🎵', '🎶', '🎧', '🎮', '📸', '🛡️',
     ],
   },
 ];
@@ -353,19 +405,23 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           } else if (evtType === 'message:updated') {
             const updated = payload;
             if (selectedConvIdRef.current === updated.conversationId) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === updated.id
-                    ? {
-                        ...m,
-                        body: updated.body,
-                        isDeleted: updated.isDeleted,
-                        editedAt: updated.editedAt,
-                        attachment: updated.isDeleted ? null : m.attachment,
-                      }
-                    : m
-                )
-              );
+              if (updated.hardDeleted || updated.isDeleted) {
+                setMessages((prev) => prev.filter((m) => m.id !== updated.id));
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === updated.id
+                      ? {
+                          ...m,
+                          body: updated.body,
+                          isDeleted: updated.isDeleted,
+                          editedAt: updated.editedAt,
+                          attachment: updated.isDeleted ? null : m.attachment,
+                        }
+                      : m
+                  )
+                );
+              }
             }
             void fetchConversations();
           } else if (evtType === 'message:read') {
@@ -669,11 +725,11 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const handleDeleteOwnMessage = async (messageId: string) => {
     try {
       await api.deleteMessage(messageId);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === messageId ? { ...m, body: '', isDeleted: true, attachment: null } : m
-        )
-      );
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      if (editingMessage?.id === messageId) {
+        setEditingMessage(null);
+        setComposerText('');
+      }
       setSelectedMessageId(null);
       void fetchConversations();
     } catch (err: any) {
@@ -1829,11 +1885,11 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                         )}
 
                         <div
-                          className={`flex items-center gap-2 max-w-[88%] sm:max-w-[74%] ${
+                          className={`relative flex items-center gap-2 max-w-[88%] sm:max-w-[74%] ${
                             msg.isMine ? 'flex-row-reverse' : 'flex-row'
                           }`}
                         >
-                          {/* Message Bubble: Blue & Green Gradient for sent, Crisp White / Deep Ocean for received */}
+                          {/* Message Bubble: Clean by default; tap/press or right-click opens WhatsApp/IG popup menu */}
                           <div
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1843,7 +1899,16 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                 );
                               }
                             }}
-                            className={`rounded-2xl px-3.5 sm:px-4 py-2.5 text-sm leading-relaxed break-words cursor-pointer select-text transition-transform active:scale-[0.99] ${
+                            onContextMenu={(e) => {
+                              if (!msg.isDeleted) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedMessageId(msg.id);
+                              }
+                            }}
+                            className={`relative rounded-2xl px-3.5 sm:px-4 py-2.5 text-sm leading-relaxed break-words cursor-pointer select-text transition-all active:scale-[0.98] ${
+                              isActionOpen ? 'ring-2 ring-emerald-400 shadow-lg z-30' : ''
+                            } ${
                               msg.isDeleted
                                 ? isDark
                                   ? 'bg-[#071829]/60 border border-teal-900/60 text-cyan-200/50 italic'
@@ -1855,6 +1920,22 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                 : 'bg-teal-50/70 border border-teal-200 text-slate-900'
                             }`}
                           >
+                            {/* Subtle WhatsApp-style hover chevron inside top-right of bubble */}
+                            {!msg.isDeleted && (
+                              <span
+                                className={`hidden sm:inline-flex opacity-0 group-hover:opacity-90 transition-opacity float-right ml-2 -mr-1 -mt-0.5 rounded-full p-0.5 ${
+                                  msg.isMine
+                                    ? 'text-white/90 hover:bg-black/20'
+                                    : isDark
+                                    ? 'text-cyan-200 hover:bg-teal-900/60'
+                                    : 'text-slate-500 hover:bg-teal-200/50'
+                                }`}
+                                title="Message options"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+
                             {msg.replyTo && !msg.isDeleted && (
                               <div
                                 className={`mb-2 px-2.5 py-1.5 text-xs rounded-xl border ${
@@ -1924,7 +2005,9 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                   : 'text-slate-500'
                               }`}
                             >
-                              {msg.editedAt && !msg.isDeleted && <span>edited ·</span>}
+                              {msg.editedAt && !msg.isDeleted && (
+                                <span className="font-medium opacity-90">Edited ·</span>
+                              )}
                               <span>
                                 {new Date(msg.createdAt).toLocaleTimeString([], {
                                   hour: '2-digit',
@@ -1936,15 +2019,49 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                               )}
                             </div>
                           </div>
+                        </div>
 
-                          {/* Desktop Hover Action Controls */}
-                          {!msg.isDeleted && (
+                        {/* WhatsApp / Instagram DM Floating Popup Menu (Appears ONLY when message is pressed/tapped) */}
+                        {!msg.isDeleted && isActionOpen && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className={`mt-1.5 z-40 flex flex-col gap-1.5 ${
+                              msg.isMine ? 'items-end' : 'items-start'
+                            }`}
+                          >
+                            {/* Instagram / WhatsApp Quick Emoji Bar */}
                             <div
-                              onClick={(e) => e.stopPropagation()}
-                              className={`hidden md:flex opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity items-center gap-0.5 p-1 rounded-xl border shrink-0 ${
+                              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border shadow-xl ${
                                 isDark
-                                  ? 'bg-[#071829] border-teal-800 text-cyan-100'
-                                  : 'bg-white border-teal-200 text-slate-700 shadow-xs'
+                                  ? 'bg-[#071829] border-teal-700/90'
+                                  : 'bg-white border-teal-200'
+                              }`}
+                            >
+                              {['❤️', '😂', '😮', '😢', '😡', '👍', '😘', '🌙'].map((rx) => (
+                                <button
+                                  key={rx}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingMessage(null);
+                                    setReplyingTo(msg);
+                                    setComposerText((prev) => `${prev}${rx}`);
+                                    setSelectedMessageId(null);
+                                    setTimeout(() => composerInputRef.current?.focus(), 40);
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center text-lg rounded-full hover:bg-emerald-500/20 hover:scale-125 active:scale-95 transition-transform cursor-pointer"
+                                  title={`Reply with ${rx}`}
+                                >
+                                  {rx}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* WhatsApp / Instagram Vertical Context Menu */}
+                            <div
+                              className={`w-44 rounded-2xl border shadow-2xl overflow-hidden divide-y ${
+                                isDark
+                                  ? 'bg-[#071829] border-teal-700/90 divide-teal-800/60 text-white'
+                                  : 'bg-white border-teal-200 divide-slate-100 text-slate-900'
                               }`}
                             >
                               <button
@@ -1952,117 +2069,33 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                 onClick={() => {
                                   setEditingMessage(null);
                                   setReplyingTo(msg);
+                                  setSelectedMessageId(null);
+                                  setTimeout(() => composerInputRef.current?.focus(), 40);
                                 }}
-                                className="p-1.5 hover:text-emerald-400 rounded-lg"
-                                title="Reply"
-                                aria-label="Reply to message"
+                                className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold transition-colors cursor-pointer ${
+                                  isDark ? 'hover:bg-teal-900/60' : 'hover:bg-teal-50'
+                                }`}
                               >
-                                <Reply className="w-3.5 h-3.5" />
+                                <span>Reply</span>
+                                <Reply className="w-4 h-4 text-cyan-400" />
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => void handleCopyMessage(msg)}
-                                className="p-1.5 hover:text-emerald-400 rounded-lg"
-                                title="Copy message"
-                                aria-label="Copy message"
+                                className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold transition-colors cursor-pointer ${
+                                  isDark ? 'hover:bg-teal-900/60' : 'hover:bg-teal-50'
+                                }`}
                               >
+                                <span>{copiedMessageId === msg.id ? 'Copied!' : 'Copy'}</span>
                                 {copiedMessageId === msg.id ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  <Check className="w-4 h-4 text-emerald-400" />
                                 ) : (
-                                  <Copy className="w-3.5 h-3.5" />
+                                  <Copy className="w-4 h-4 text-cyan-400" />
                                 )}
                               </button>
 
-                              {msg.isMine ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setReplyingTo(null);
-                                      setEditingMessage(msg);
-                                      setComposerText(msg.body);
-                                    }}
-                                    className="p-1.5 hover:text-emerald-400 rounded-lg"
-                                    title="Edit message"
-                                    aria-label="Edit message"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void handleDeleteOwnMessage(msg.id)}
-                                    className="p-1.5 hover:text-red-400 rounded-lg"
-                                    title="Delete message"
-                                    aria-label="Delete message"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setReportTarget({
-                                      username: msg.senderUsername,
-                                      messageId: msg.id,
-                                      messagePreview: msg.body,
-                                    })
-                                  }
-                                  className="p-1.5 hover:text-emerald-400 rounded-lg"
-                                  title="Report message"
-                                  aria-label="Report message"
-                                >
-                                  <Flag className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Mobile Tap-to-Reveal Action Bar */}
-                        {!msg.isDeleted && isActionOpen && (
-                          <div
-                            onClick={(e) => e.stopPropagation()}
-                            className={`flex md:hidden items-center gap-1 mt-1.5 p-1 rounded-xl border shadow-sm ${
-                              isDark
-                                ? 'bg-[#071829] border-teal-800 text-cyan-50'
-                                : 'bg-white border-teal-200 text-slate-900'
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingMessage(null);
-                                setReplyingTo(msg);
-                                setSelectedMessageId(null);
-                              }}
-                              className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium rounded-lg hover:bg-emerald-500/20"
-                            >
-                              <Reply className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Reply</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => void handleCopyMessage(msg)}
-                              className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium rounded-lg hover:bg-emerald-500/20"
-                            >
-                              {copiedMessageId === msg.id ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                  <span>Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3.5 h-3.5 text-emerald-400" />
-                                  <span>Copy</span>
-                                </>
-                              )}
-                            </button>
-
-                            {msg.isMine ? (
-                              <>
+                              {msg.isMine && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2070,38 +2103,48 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                                     setEditingMessage(msg);
                                     setComposerText(msg.body);
                                     setSelectedMessageId(null);
+                                    setTimeout(() => composerInputRef.current?.focus(), 40);
                                   }}
-                                  className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium rounded-lg hover:bg-emerald-500/20"
+                                  className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold transition-colors cursor-pointer ${
+                                    isDark ? 'hover:bg-teal-900/60' : 'hover:bg-teal-50'
+                                  }`}
                                 >
-                                  <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
                                   <span>Edit</span>
+                                  <Edit3 className="w-4 h-4 text-emerald-400" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void handleDeleteOwnMessage(msg.id)}
-                                  className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium text-red-400 rounded-lg hover:bg-red-500/15"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete</span>
-                                </button>
-                              </>
-                            ) : (
+                              )}
+
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setSelectedMessageId(null);
-                                  setReportTarget({
-                                    username: msg.senderUsername,
-                                    messageId: msg.id,
-                                    messagePreview: msg.body,
-                                  });
-                                }}
-                                className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-medium text-emerald-400 rounded-lg hover:bg-emerald-500/20"
+                                onClick={() => void handleDeleteOwnMessage(msg.id)}
+                                className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-red-400 transition-colors cursor-pointer ${
+                                  isDark ? 'hover:bg-red-950/50' : 'hover:bg-red-50 text-red-600'
+                                }`}
                               >
-                                <Flag className="w-3.5 h-3.5" />
-                                <span>Report</span>
+                                <span>Delete</span>
+                                <Trash2 className="w-4 h-4 text-red-400" />
                               </button>
-                            )}
+
+                              {!msg.isMine && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedMessageId(null);
+                                    setReportTarget({
+                                      username: msg.senderUsername,
+                                      messageId: msg.id,
+                                      messagePreview: msg.body,
+                                    });
+                                  }}
+                                  className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold transition-colors cursor-pointer ${
+                                    isDark ? 'hover:bg-teal-900/60' : 'hover:bg-teal-50'
+                                  }`}
+                                >
+                                  <span>Report</span>
+                                  <Flag className="w-4 h-4 text-amber-400" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2129,24 +2172,43 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               isDark ? 'bg-[#04101E] border-teal-800/80' : 'bg-teal-50/60 border-teal-200'
             }`}
           >
-            {/* Emoji Picker Popover */}
+            {/* Emoji Picker Popover (Kissing, Goodnight, Love, Smileys, Hands & Fun) */}
             {showEmojiPicker && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className={` mb-2.5 p-3 rounded-2xl border shadow-xl ${
+                className={`mb-2.5 p-3 rounded-2xl border shadow-xl ${
                   isDark
                     ? 'bg-[#061629] border-teal-800/90 text-white'
                     : 'bg-white border-teal-200 text-slate-900'
                 }`}
               >
+                {/* Quick 1-Tap Kiss & Goodnight Stickers/Combos */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 border-b border-teal-800/40">
+                  {QUICK_EMOJI_COMBOS.map((combo) => (
+                    <button
+                      key={combo.label}
+                      type="button"
+                      onClick={() => handleInsertEmoji(combo.text)}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-xl border shrink-0 transition-colors cursor-pointer ${
+                        isDark
+                          ? 'bg-[#0A2239] border-teal-700/80 text-cyan-100 hover:bg-teal-900/80 hover:text-white'
+                          : 'bg-teal-50 border-teal-200 text-slate-800 hover:bg-teal-100'
+                      }`}
+                    >
+                      {combo.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Category Tabs */}
                 <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-teal-800/40">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 overflow-x-auto">
                     {EMOJI_CATEGORIES.map((cat, idx) => (
                       <button
                         key={cat.label}
                         type="button"
                         onClick={() => setActiveEmojiCategory(idx)}
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg shrink-0 transition-colors cursor-pointer ${
                           activeEmojiCategory === idx
                             ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white'
                             : isDark
@@ -2161,24 +2223,26 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(false)}
-                    className="p-1 rounded-lg hover:bg-teal-900/40 text-cyan-200/70 hover:text-white cursor-pointer"
+                    className="p-1 rounded-lg hover:bg-teal-900/40 text-cyan-200/70 hover:text-white shrink-0 cursor-pointer"
                     aria-label="Close emoji picker"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-10 sm:grid-cols-10 gap-1 max-h-40 overflow-y-auto">
-                  {EMOJI_CATEGORIES[activeEmojiCategory].emojis.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => handleInsertEmoji(emoji)}
-                      className="h-9 flex items-center justify-center text-lg rounded-lg hover:bg-emerald-500/20 active:scale-95 transition-transform cursor-pointer"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-8 sm:grid-cols-10 gap-1 max-h-48 overflow-y-auto">
+                  {(EMOJI_CATEGORIES[activeEmojiCategory] || EMOJI_CATEGORIES[0]).emojis.map(
+                    (emoji, i) => (
+                      <button
+                        key={`${emoji}-${i}`}
+                        type="button"
+                        onClick={() => handleInsertEmoji(emoji)}
+                        className="h-9 flex items-center justify-center text-xl rounded-lg hover:bg-emerald-500/20 active:scale-95 transition-transform cursor-pointer"
+                      >
+                        {emoji}
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
             )}

@@ -2124,8 +2124,12 @@ async function startServer() {
         conversation_id: string;
         sender_id: string;
       }>(
-        `SELECT id, conversation_id, sender_id FROM messages WHERE id = $1 LIMIT 1`,
-        [messageId]
+        `SELECT m.id, m.conversation_id, m.sender_id
+         FROM messages m
+         JOIN conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = $2
+         WHERE m.id = $1
+         LIMIT 1`,
+        [messageId, user.id]
       );
 
       if (msgRes.rowCount === 0) {
@@ -2134,16 +2138,9 @@ async function startServer() {
       }
 
       const msg = msgRes.rows[0];
-      if (msg.sender_id !== user.id) {
-        res.status(403).json({ error: 'You can only delete your own messages.' });
-        return;
-      }
 
-      await pool.query(
-        `UPDATE messages SET body = '', deleted_at = NOW() WHERE id = $1`,
-        [messageId]
-      );
       await pool.query(`DELETE FROM chat_attachments WHERE message_id = $1`, [messageId]);
+      await pool.query(`DELETE FROM messages WHERE id = $1`, [messageId]);
 
       const members = await pool.query<{ user_id: string }>(
         `SELECT user_id FROM conversation_members WHERE conversation_id = $1`,
@@ -2156,11 +2153,12 @@ async function startServer() {
           conversationId: msg.conversation_id,
           body: '',
           isDeleted: true,
+          hardDeleted: true,
           editedAt: null,
         });
       }
 
-      res.json({ success: true, id: messageId });
+      res.json({ success: true, id: messageId, hardDeleted: true });
     } catch (err) {
       console.error('[Delete Message] Error:', err);
       res.status(500).json({ error: 'Failed to delete message.' });
