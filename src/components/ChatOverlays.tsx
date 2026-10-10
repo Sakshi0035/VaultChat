@@ -74,6 +74,7 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
   const handleOpenOrStart = async (user: UserSearchResult) => {
     setError(null);
     if (user.existingConversationId && user.existingConversationStatus !== 'declined') {
+      await onConversationsChanged();
       onSelectConversation(user.existingConversationId);
       onClose();
       return;
