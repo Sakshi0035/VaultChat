@@ -25,6 +25,8 @@ import {
   FileText,
   Users,
   Plus,
+  Smile,
+  Camera,
 } from 'lucide-react';
 import { api, getTabSessionToken } from '../lib/api.ts';
 import {
@@ -50,6 +52,65 @@ interface ChatWorkspaceProps {
   onThemeChange: (theme: ThemeMode) => void;
   isDark: boolean;
 }
+
+const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
+  {
+    label: 'Smileys',
+    emojis: [
+      '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
+      '🙂', '😉', '😍', '🥰', '😘', '😜', '🤪', '😎', '🤩', '🥳',
+      '😏', '😒', '😔', '😢', '😭', '😤', '🤯', '😱', '🤔', '😴',
+    ],
+  },
+  {
+    label: 'Gestures',
+    emojis: [
+      '👋', '🤚', '✋', '🖖', '👌', '🤌', '✌️', '🤞', '🤟', '🤘',
+      '🤙', '👍', '👎', '👊', '✊', '👏', '🙌', '🤝', '🙏', '💪',
+      '🫶', '👀', '🔥', '💯', '✨', '🎉', '🎊', '🏆', '💎', '🚀',
+    ],
+  },
+  {
+    label: 'Hearts & Vibes',
+    emojis: [
+      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💖', '💘',
+      '💝', '💞', '💕', '💓', '💗', '🌟', '💫', '🌈', '☀️', '🌙',
+      '⚡', '💥', '🎈', '🎁', '🥂', '☕', '🍕', '🍔', '🎂', '🎵',
+    ],
+  },
+];
+
+const AvatarBadge: React.FC<{
+  username: string;
+  avatarColor: string;
+  avatarUrl?: string | null;
+  sizeClass?: string;
+  textClass?: string;
+}> = ({
+  username,
+  avatarColor,
+  avatarUrl,
+  sizeClass = 'w-10 h-10',
+  textClass = 'text-xs',
+}) => {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={username}
+        className={`${sizeClass} rounded-full object-cover select-none shrink-0`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`${sizeClass} rounded-full flex items-center justify-center text-white ${textClass} font-bold select-none shrink-0`}
+      style={{ backgroundColor: avatarColor }}
+    >
+      {username.slice(0, 2).toUpperCase()}
+    </div>
+  );
+};
 
 export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   currentUser,
@@ -82,6 +143,8 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const [showMessageSearch, setShowMessageSearch] = useState(false);
 
   const [composerText, setComposerText] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState(0);
   const [pendingAttachment, setPendingAttachment] = useState<{
     fileName: string;
     mimeType: string;
@@ -116,6 +179,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   const selectedConvIdRef = useRef<string | null>(null);
   const isComposingNewRef = useRef<boolean>(false);
+  const initialAutoSelectDoneRef = useRef<boolean>(false);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -136,7 +200,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       const list = await api.getConversations();
       setConversations(list);
       setConversationsError(null);
-      if (!selectedConvIdRef.current && !isComposingNewRef.current && list.length > 0) {
+      if (
+        !initialAutoSelectDoneRef.current &&
+        !selectedConvIdRef.current &&
+        !isComposingNewRef.current &&
+        list.length > 0
+      ) {
+        initialAutoSelectDoneRef.current = true;
         setSelectedConvId(list[0].id);
       }
     } catch (err: any) {
@@ -399,6 +469,25 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     }, 2000);
   };
 
+  const handleInsertEmoji = (emoji: string) => {
+    setComposerText((prev) => `${prev}${emoji}`);
+    if (sendError) setSendError(null);
+    composerInputRef.current?.focus();
+  };
+
+  const handleCloseCurrentChat = () => {
+    initialAutoSelectDoneRef.current = true;
+    setSelectedConvId(null);
+    setIsComposingNew(false);
+    setShowPeerDetails(false);
+    setShowMessageSearch(false);
+    setMessageSearchQuery('');
+    setSelectedMessageId(null);
+    setReplyingTo(null);
+    setEditingMessage(null);
+    setShowEmojiPicker(false);
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -445,6 +534,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
   const handleSelectRecipientUser = async (user: UserSearchResult) => {
     setSendError(null);
+    initialAutoSelectDoneRef.current = true;
     if (user.existingConversationId && user.existingConversationStatus !== 'declined') {
       setIsComposingNew(false);
       setSelectedConvId(user.existingConversationId);
@@ -475,17 +565,19 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
     const trimmed = composerText.trim();
     if (!trimmed && !pendingAttachment) {
-      setSendError('Type a message or attach a file before sending.');
+      setSendError('Type a message, pick an emoji, or attach a file before sending.');
       composerInputRef.current?.focus();
       return;
     }
+
+    setShowEmojiPicker(false);
 
     // If no active conversation is selected yet, allow sending directly to the @username in the "To:" bar!
     if (!selectedConvId || !activeConversation) {
       const targetUser = recipientQuery.trim().replace(/^@/, '');
       if (!targetUser) {
         setSendError(
-          'Enter a @username in the "To:" box at the top of the chat (or tap Find User) to send your message.'
+          'Enter a @username in the "To:" box at the top of the chat (or tap Directory) to send your message.'
         );
         recipientInputRef.current?.focus();
         return;
@@ -494,6 +586,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       setSendError(null);
       setSending(true);
       try {
+        initialAutoSelectDoneRef.current = true;
         const conv = await api.startConversation(
           targetUser,
           trimmed && !pendingAttachment ? trimmed : undefined
@@ -569,6 +662,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
       setReplyingTo(null);
       setEditingMessage(null);
       setPendingAttachment(null);
+      setShowEmojiPicker(false);
     }
   };
 
@@ -657,6 +751,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
   };
 
   const handleStartNewChatMode = () => {
+    initialAutoSelectDoneRef.current = true;
     setIsComposingNew(true);
     setSelectedConvId(null);
     setMobileView('chat');
@@ -708,15 +803,16 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             setShowSettingsModal(true);
           }}
           className="flex items-center gap-2 min-w-0 py-1 text-left cursor-pointer shrink-0"
-          title="Account Settings"
+          title="Upload Profile Picture & Account Settings"
         >
           <div className="relative shrink-0">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
-              style={{ backgroundColor: currentUser.avatarColor }}
-            >
-              {currentUser.username.slice(0, 2).toUpperCase()}
-            </div>
+            <AvatarBadge
+              username={currentUser.username}
+              avatarColor={currentUser.avatarColor}
+              avatarUrl={currentUser.avatarUrl}
+              sizeClass="w-8 h-8"
+              textClass="text-xs"
+            />
             <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#040E1C] absolute bottom-0 right-0" />
           </div>
           <span className="text-xs font-bold truncate max-w-[76px] sm:max-w-[120px]">
@@ -803,7 +899,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             className={`min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl transition-colors ${
               isDark ? 'hover:bg-teal-950 text-cyan-100' : 'hover:bg-teal-50 text-slate-700'
             }`}
-            title="Settings"
+            title="Profile Pic & Settings"
             aria-label="Settings"
           >
             <Settings className="w-4 h-4" />
@@ -838,23 +934,26 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 setShowSettingsModal(true);
               }}
               className="flex items-center gap-2.5 min-w-0 py-1 text-left group cursor-pointer"
-              title="Open Profile & Account Settings"
+              title="Click to Upload Profile Picture (PFP) or Edit Profile"
             >
               <div className="relative shrink-0">
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
-                  style={{ backgroundColor: currentUser.avatarColor }}
-                >
-                  {currentUser.username.slice(0, 2).toUpperCase()}
-                </div>
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#051221] absolute bottom-0 right-0" />
+                <AvatarBadge
+                  username={currentUser.username}
+                  avatarColor={currentUser.avatarColor}
+                  avatarUrl={currentUser.avatarUrl}
+                  sizeClass="w-10 h-10"
+                  textClass="text-xs"
+                />
+                <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 text-white ring-2 ring-[#051221] absolute -bottom-0.5 -right-0.5 flex items-center justify-center">
+                  <Camera className="w-2.5 h-2.5" />
+                </span>
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-bold truncate group-hover:text-emerald-400 transition-colors">
                   @{currentUser.username}
                 </div>
                 <div className={`text-[11px] truncate ${isDark ? 'text-cyan-200/70' : 'text-teal-700'}`}>
-                  VaultChat
+                  Edit Profile & PFP
                 </div>
               </div>
             </button>
@@ -863,7 +962,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={handleStartNewChatMode}
-                className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${
+                className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
                   isDark
                     ? 'hover:bg-teal-950 text-emerald-400'
                     : 'hover:bg-teal-100/70 text-teal-800'
@@ -877,7 +976,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setShowNotificationsModal(true)}
-                className={`relative min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${
+                className={`relative min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
                   isDark
                     ? 'hover:bg-teal-950 text-cyan-100'
                     : 'hover:bg-teal-100/70 text-teal-800'
@@ -897,12 +996,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   setSettingsInitialTab('account');
                   setShowSettingsModal(true);
                 }}
-                className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${
+                className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
                   isDark
                     ? 'hover:bg-teal-950 text-cyan-100'
                     : 'hover:bg-teal-100/70 text-teal-800'
                 }`}
-                title="Settings"
+                title="Settings & Profile Photo"
                 aria-label="Settings"
               >
                 <Settings className="w-4 h-4" />
@@ -1049,6 +1148,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     key={conv.id}
                     type="button"
                     onClick={() => {
+                      initialAutoSelectDoneRef.current = true;
                       setIsComposingNew(false);
                       setSelectedConvId(conv.id);
                       setMobileView('chat');
@@ -1058,6 +1158,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                       setMessageSearchQuery('');
                       setShowMessageSearch(false);
                       setSelectedMessageId(null);
+                      setShowEmojiPicker(false);
                     }}
                     className={`w-full px-4 py-3.5 min-h-[68px] flex items-center gap-3.5 text-left transition-colors cursor-pointer ${
                       isSelected
@@ -1070,12 +1171,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     }`}
                   >
                     <div className="relative shrink-0">
-                      <div
-                        className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
-                        style={{ backgroundColor: conv.peer.avatarColor }}
-                      >
-                        {conv.peer.username.slice(0, 2).toUpperCase()}
-                      </div>
+                      <AvatarBadge
+                        username={conv.peer.username}
+                        avatarColor={conv.peer.avatarColor}
+                        avatarUrl={conv.peer.avatarUrl}
+                        sizeClass="w-11 h-11"
+                        textClass="text-xs"
+                      />
                       {conv.peer.isOnline && (
                         <span
                           className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#051221] absolute bottom-0 right-0"
@@ -1195,6 +1297,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     key={conv.id}
                     type="button"
                     onClick={() => {
+                      initialAutoSelectDoneRef.current = true;
                       setIsComposingNew(false);
                       setSelectedConvId(conv.id);
                       setSendError(null);
@@ -1229,7 +1332,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
           {/* ==================================================================
               CHAT BOX TOP HEADER:
-              Shows Active Peer Header OR "To: @username" New Chat Bar
+              Shows Active Peer Header (with Close Chat option!) OR "To: @username"
               ================================================================== */}
           {activeConversation && !isComposingNew ? (
             <header
@@ -1244,7 +1347,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     setMobileView('list');
                     setShowPeerDetails(false);
                   }}
-                  className={`md:hidden min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors shrink-0 ${
+                  className={`md:hidden min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl transition-colors shrink-0 ${
                     isDark ? 'hover:bg-teal-950 text-white' : 'hover:bg-teal-50 text-slate-900'
                   }`}
                   aria-label="View all conversations"
@@ -1260,12 +1363,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   title="View user profile details"
                 >
                   <div className="relative shrink-0">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
-                      style={{ backgroundColor: activeConversation.peer.avatarColor }}
-                    >
-                      {activeConversation.peer.username.slice(0, 2).toUpperCase()}
-                    </div>
+                    <AvatarBadge
+                      username={activeConversation.peer.username}
+                      avatarColor={activeConversation.peer.avatarColor}
+                      avatarUrl={activeConversation.peer.avatarUrl}
+                      sizeClass="w-9 h-9"
+                      textClass="text-xs"
+                    />
                     {activeConversation.peer.isOnline && (
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#051221] absolute bottom-0 right-0" />
                     )}
@@ -1307,25 +1411,11 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                 <button
                   type="button"
-                  onClick={handleStartNewChatMode}
-                  className={` px-2.5 min-h-[38px] hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold rounded-xl border transition-colors mr-1 ${
-                    isDark
-                      ? 'border-teal-800/80 bg-[#071829] text-emerald-400 hover:bg-teal-950'
-                      : 'border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100'
-                  }`}
-                  title="Start a new chat"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>New Chat</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => {
                     setShowMessageSearch(!showMessageSearch);
                     if (showMessageSearch) setMessageSearchQuery('');
                   }}
-                  className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${
+                  className={`min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
                     showMessageSearch
                       ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white'
                       : isDark
@@ -1341,7 +1431,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 <button
                   type="button"
                   onClick={handleToggleBlockPeer}
-                  className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${
+                  className={`min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
                     activeConversation.peer.isBlockedByMe
                       ? 'bg-red-500/20 text-red-400'
                       : isDark
@@ -1365,7 +1455,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                       username: activeConversation.peer.username,
                     })
                   }
-                  className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${
+                  className={`min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
                     isDark
                       ? 'hover:bg-teal-950 text-cyan-200'
                       : 'hover:bg-teal-50 text-slate-700'
@@ -1379,7 +1469,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowPeerDetails(!showPeerDetails)}
-                  className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${
+                  className={`min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl transition-colors cursor-pointer ${
                     showPeerDetails
                       ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white'
                       : isDark
@@ -1390,6 +1480,22 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   aria-label="Toggle profile details"
                 >
                   <Info className="w-4 h-4" />
+                </button>
+
+                {/* Close Chat Button */}
+                <button
+                  type="button"
+                  onClick={handleCloseCurrentChat}
+                  className={`px-2.5 min-h-[38px] flex items-center gap-1 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ml-0.5 ${
+                    isDark
+                      ? 'border-teal-800/80 bg-[#071829] hover:bg-red-950/50 hover:border-red-500/40 text-cyan-100 hover:text-red-300'
+                      : 'border-teal-200 bg-teal-50/70 hover:bg-red-50 hover:border-red-300 text-slate-700 hover:text-red-600'
+                  }`}
+                  title="Close current chat"
+                  aria-label="Close current chat"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">Close</span>
                 </button>
               </div>
             </header>
@@ -1433,7 +1539,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                       setIsComposingNew(false);
                       setSelectedConvId(conversations[0].id);
                     }}
-                    className={`px-3 py-2 min-h-[40px] text-xs font-semibold rounded-xl border transition-colors ${
+                    className={`px-3 py-2 min-h-[40px] text-xs font-semibold rounded-xl border transition-colors cursor-pointer ${
                       isDark
                         ? 'border-teal-800 text-cyan-100 hover:bg-teal-950'
                         : 'border-teal-300 text-slate-700 hover:bg-teal-50'
@@ -1538,7 +1644,10 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
               ================================================================== */}
           <div
             className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 space-y-3"
-            onClick={() => setSelectedMessageId(null)}
+            onClick={() => {
+              setSelectedMessageId(null);
+              if (showEmojiPicker) setShowEmojiPicker(false);
+            }}
           >
             {!activeConversation || isComposingNew ? (
               <div className="max-w-lg mx-auto py-4 space-y-4">
@@ -1569,12 +1678,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                             }`}
                           >
                             <div className="flex items-center gap-3 min-w-0">
-                              <div
-                                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                                style={{ backgroundColor: u.avatarColor }}
-                              >
-                                {u.username.slice(0, 2).toUpperCase()}
-                              </div>
+                              <AvatarBadge
+                                username={u.username}
+                                avatarColor={u.avatarColor}
+                                avatarUrl={u.avatarUrl}
+                                sizeClass="w-10 h-10"
+                                textClass="text-xs"
+                              />
                               <div className="min-w-0">
                                 <div className="text-sm font-bold truncate">@{u.username}</div>
                                 <div
@@ -1680,7 +1790,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                       Chat with @{activeConversation.peer.username}
                     </p>
                     <p className={`text-xs ${isDark ? 'text-cyan-100/70' : 'text-slate-600'}`}>
-                      Type your message in the box below and press Send.
+                      Type your message or pick an emoji below and press Send.
                     </p>
                   </div>
                 ) : (
@@ -2012,13 +2122,67 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
           )}
 
           {/* ==================================================================
-              ALWAYS-VISIBLE MESSAGE COMPOSER BOX (Mobile, Tablet & Desktop)
+              ALWAYS-VISIBLE MESSAGE COMPOSER BOX (With Emoji Picker & File Upload)
               ================================================================== */}
           <div
-            className={`p-2.5 sm:p-3.5 border-t pb-safe shrink-0 z-20 ${
+            className={`relative p-2.5 sm:p-3.5 border-t pb-safe shrink-0 z-20 ${
               isDark ? 'bg-[#04101E] border-teal-800/80' : 'bg-teal-50/60 border-teal-200'
             }`}
           >
+            {/* Emoji Picker Popover */}
+            {showEmojiPicker && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className={` mb-2.5 p-3 rounded-2xl border shadow-xl ${
+                  isDark
+                    ? 'bg-[#061629] border-teal-800/90 text-white'
+                    : 'bg-white border-teal-200 text-slate-900'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-teal-800/40">
+                  <div className="flex items-center gap-1">
+                    {EMOJI_CATEGORIES.map((cat, idx) => (
+                      <button
+                        key={cat.label}
+                        type="button"
+                        onClick={() => setActiveEmojiCategory(idx)}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                          activeEmojiCategory === idx
+                            ? 'bg-gradient-to-r from-blue-600 to-emerald-500 text-white'
+                            : isDark
+                            ? 'text-cyan-200/70 hover:text-white'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(false)}
+                    className="p-1 rounded-lg hover:bg-teal-900/40 text-cyan-200/70 hover:text-white cursor-pointer"
+                    aria-label="Close emoji picker"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-10 sm:grid-cols-10 gap-1 max-h-40 overflow-y-auto">
+                  {EMOJI_CATEGORIES[activeEmojiCategory].emojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleInsertEmoji(emoji)}
+                      className="h-9 flex items-center justify-center text-lg rounded-lg hover:bg-emerald-500/20 active:scale-95 transition-transform cursor-pointer"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {sendError && (
               <div className="mb-2 px-3 py-2 rounded-xl border border-red-500/40 bg-red-500/15 text-red-200 text-xs flex items-center justify-between">
                 <span>{sendError}</span>
@@ -2115,7 +2279,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   </div>
                 )}
 
-                <form onSubmit={handleSendOrEditMessage} className="flex items-end gap-2">
+                <form onSubmit={handleSendOrEditMessage} className="flex items-center gap-1.5 sm:gap-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -2126,7 +2290,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className={`min-w-[46px] min-h-[46px] flex items-center justify-center rounded-xl border-2 transition-colors shrink-0 cursor-pointer ${
+                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border-2 transition-colors shrink-0 cursor-pointer ${
                       isDark
                         ? 'bg-[#071A2E] border-teal-700/80 text-cyan-200 hover:text-white hover:border-emerald-400'
                         : 'bg-white border-teal-300 text-teal-700 hover:bg-teal-50'
@@ -2137,6 +2301,23 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     <Paperclip className="w-4 h-4" />
                   </button>
 
+                  {/* Emoji Picker Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker((prev) => !prev)}
+                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border-2 transition-colors shrink-0 cursor-pointer ${
+                      showEmojiPicker
+                        ? 'bg-gradient-to-r from-blue-600 to-emerald-500 border-emerald-400 text-white'
+                        : isDark
+                        ? 'bg-[#071A2E] border-teal-700/80 text-cyan-200 hover:text-white hover:border-emerald-400'
+                        : 'bg-white border-teal-300 text-teal-700 hover:bg-teal-50'
+                    }`}
+                    title="Insert emoji"
+                    aria-label="Insert emoji"
+                  >
+                    <Smile className="w-4 h-4" />
+                  </button>
+
                   <textarea
                     ref={composerInputRef}
                     rows={1}
@@ -2145,12 +2326,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     onKeyDown={handleComposerKeyDown}
                     placeholder={
                       activeConversation && !isComposingNew
-                        ? `Type a message to @${activeConversation.peer.username}...`
+                        ? `Message @${activeConversation.peer.username}...`
                         : recipientQuery.trim()
-                        ? `Type a message to @${recipientQuery.trim().replace(/^@/, '')}...`
+                        ? `Message @${recipientQuery.trim().replace(/^@/, '')}...`
                         : 'Type a chat message here...'
                     }
-                    className={`flex-1 px-3.5 py-2.5 min-h-[46px] text-base sm:text-sm rounded-xl border-2 resize-none max-h-28 focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
+                    className={`flex-1 px-3.5 py-2.5 h-[44px] text-base sm:text-sm rounded-xl border-2 resize-none overflow-hidden focus:outline-none focus:ring-2 focus:ring-emerald-400 ${
                       isDark
                         ? 'bg-[#071A2E] border-teal-700/80 text-white placeholder-cyan-300/60 focus:border-emerald-400'
                         : 'bg-white border-teal-300 text-slate-900 placeholder-slate-400 focus:border-teal-600'
@@ -2160,7 +2341,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   <button
                     type="submit"
                     disabled={sending}
-                    className="px-4 sm:px-5 min-h-[46px] text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 hover:from-blue-500 hover:via-cyan-400 hover:to-emerald-400 active:scale-[0.98] disabled:opacity-60 rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap shadow-sm"
+                    className="px-4 sm:px-5 min-h-[44px] text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 hover:from-blue-500 hover:via-cyan-400 hover:to-emerald-400 active:scale-[0.98] disabled:opacity-60 rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap shadow-sm"
                   >
                     <Send className="w-4 h-4" />
                     <span>{editingMessage ? 'Save' : 'Send'}</span>
@@ -2211,12 +2392,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
 
                 <div className="flex items-center gap-4">
                   <div className="relative shrink-0">
-                    <div
-                      className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold select-none"
-                      style={{ backgroundColor: activeConversation.peer.avatarColor }}
-                    >
-                      {activeConversation.peer.username.slice(0, 2).toUpperCase()}
-                    </div>
+                    <AvatarBadge
+                      username={activeConversation.peer.username}
+                      avatarColor={activeConversation.peer.avatarColor}
+                      avatarUrl={activeConversation.peer.avatarUrl}
+                      sizeClass="w-16 h-16"
+                      textClass="text-xl"
+                    />
                     {activeConversation.peer.isOnline && (
                       <span className="w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-[#071829] absolute bottom-0 right-0" />
                     )}
@@ -2294,6 +2476,19 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                     <span>Report User</span>
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloseCurrentChat}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-xs font-semibold rounded-xl border transition-colors ${
+                    isDark
+                      ? 'border-teal-800 text-cyan-100 hover:bg-teal-950'
+                      : 'border-teal-300 text-slate-700 hover:bg-teal-50'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                  <span>Close Chat</span>
+                </button>
               </div>
             </div>
 
@@ -2307,12 +2502,13 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             >
               <div className="text-center space-y-3 pt-2">
                 <div className="relative inline-block">
-                  <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto select-none"
-                    style={{ backgroundColor: activeConversation.peer.avatarColor }}
-                  >
-                    {activeConversation.peer.username.slice(0, 2).toUpperCase()}
-                  </div>
+                  <AvatarBadge
+                    username={activeConversation.peer.username}
+                    avatarColor={activeConversation.peer.avatarColor}
+                    avatarUrl={activeConversation.peer.avatarUrl}
+                    sizeClass="w-16 h-16"
+                    textClass="text-xl"
+                  />
                   {activeConversation.peer.isOnline && (
                     <span className="w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-[#051221] absolute bottom-0 right-0" />
                   )}
@@ -2362,7 +2558,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 <button
                   type="button"
                   onClick={handleToggleBlockPeer}
-                  className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 min-h-[42px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
+                  className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 min-h-[42px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap cursor-pointer ${
                     activeConversation.peer.isBlockedByMe
                       ? 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10'
                       : 'border-red-500/40 text-red-400 hover:bg-red-500/10'
@@ -2388,7 +2584,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                       username: activeConversation.peer.username,
                     })
                   }
-                  className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 min-h-[42px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap ${
+                  className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 min-h-[42px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap cursor-pointer ${
                     isDark
                       ? 'border-teal-800/80 text-cyan-100 hover:bg-teal-950'
                       : 'border-teal-300 text-slate-800 hover:bg-teal-100/60'
@@ -2396,6 +2592,19 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 >
                   <Flag className="w-4 h-4 text-emerald-400" />
                   <span>Report @{activeConversation.peer.username}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCloseCurrentChat}
+                  className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 min-h-[42px] text-xs font-semibold rounded-xl border transition-colors whitespace-nowrap cursor-pointer ${
+                    isDark
+                      ? 'border-teal-800/80 text-cyan-100 hover:bg-teal-950'
+                      : 'border-teal-300 text-slate-800 hover:bg-teal-100/60'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                  <span>Close Chat</span>
                 </button>
               </div>
             </aside>
@@ -2408,6 +2617,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         isOpen={showUserSearchModal}
         onClose={() => setShowUserSearchModal(false)}
         onSelectConversation={(convId) => {
+          initialAutoSelectDoneRef.current = true;
           setIsComposingNew(false);
           setSelectedConvId(convId);
           setMobileView('chat');
@@ -2423,6 +2633,7 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
         onMarkRead={handleMarkNotificationRead}
         onMarkAllRead={handleMarkAllNotificationsRead}
         onSelectConversation={(convId) => {
+          initialAutoSelectDoneRef.current = true;
           setIsComposingNew(false);
           setSelectedConvId(convId);
           setMobileView('chat');

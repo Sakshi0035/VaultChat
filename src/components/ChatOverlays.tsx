@@ -188,12 +188,20 @@ export const UserSearchModal: React.FC<UserSearchModalProps> = ({
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
-                      <div
-                        className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
-                        style={{ backgroundColor: u.avatarColor }}
-                      >
-                        {u.username.slice(0, 2).toUpperCase()}
-                      </div>
+                      {u.avatarUrl ? (
+                        <img
+                          src={u.avatarUrl}
+                          alt={u.username}
+                          className="w-11 h-11 rounded-full object-cover select-none"
+                        />
+                      ) : (
+                        <div
+                          className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
+                          style={{ backgroundColor: u.avatarColor }}
+                        >
+                          {u.username.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
                       {u.isOnline && (
                         <span
                           className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#071829] absolute bottom-0 right-0"

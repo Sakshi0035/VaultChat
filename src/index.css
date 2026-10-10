@@ -8,6 +8,20 @@
     overscroll-behavior-y: none;
   }
 
+  /* Hide default browser scrollbars across all elements while keeping smooth wheel/touch scrolling */
+  *,
+  *::before,
+  *::after {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;

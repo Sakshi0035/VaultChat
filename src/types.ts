@@ -3,6 +3,7 @@ export type ThemeMode = 'dark' | 'light' | 'system';
 export interface CurrentUser {
   username: string;
   avatarColor: string;
+  avatarUrl?: string | null;
   bio: string;
   createdAt: string;
   lastLoginAt: string;
@@ -14,6 +15,7 @@ export interface CurrentUser {
 export interface PeerProfile {
   username: string;
   avatarColor: string;
+  avatarUrl?: string | null;
   bio: string;
   createdAt: string;
   isOnline: boolean;
@@ -25,6 +27,7 @@ export interface PeerProfile {
 export interface UserSearchResult {
   username: string;
   avatarColor: string;
+  avatarUrl?: string | null;
   bio: string;
   createdAt: string;
   isOnline: boolean;
@@ -85,6 +88,7 @@ export interface ConversationSummary {
 export interface BlockedUserItem {
   username: string;
   avatarColor: string;
+  avatarUrl?: string | null;
   bio: string;
   blockedAt: string;
 }

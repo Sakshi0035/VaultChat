@@ -45,6 +45,7 @@ export interface AuthenticatedUser {
   username: string;
   usernameNormalized: string;
   avatarColor: string;
+  avatarUrl: string | null;
   bio: string;
   createdAt: string;
   lastLoginAt: string;
@@ -140,6 +141,7 @@ async function authenticateMiddleware(
       username: string;
       username_normalized: string;
       avatar_color: string;
+      avatar_url: string | null;
       bio: string;
       created_at: Date;
       last_login_at: Date;
@@ -152,6 +154,7 @@ async function authenticateMiddleware(
          u.username,
          u.username_normalized,
          u.avatar_color,
+         u.avatar_url,
          u.bio,
          u.created_at,
          u.last_login_at,
@@ -203,6 +206,7 @@ async function authenticateMiddleware(
       username: row.username,
       usernameNormalized: row.username_normalized,
       avatarColor: row.avatar_color,
+      avatarUrl: row.avatar_url || null,
       bio: row.bio,
       createdAt: row.created_at.toISOString(),
       lastLoginAt: row.last_login_at.toISOString(),
@@ -405,6 +409,7 @@ async function startServer() {
           user: {
             username: newUser.username,
             avatarColor: newUser.avatar_color,
+            avatarUrl: null,
             bio: newUser.bio,
             createdAt: newUser.created_at.toISOString(),
             lastLoginAt: newUser.last_login_at.toISOString(),
@@ -466,10 +471,11 @@ async function startServer() {
         username_normalized: string;
         password_hash: string;
         avatar_color: string;
+        avatar_url: string | null;
         bio: string;
         created_at: Date;
       }>(
-        `SELECT id, username, username_normalized, password_hash, avatar_color, bio, created_at
+        `SELECT id, username, username_normalized, password_hash, avatar_color, avatar_url, bio, created_at
          FROM users
          WHERE username_normalized = $1 AND deleted_at IS NULL
          LIMIT 1`,
@@ -536,6 +542,7 @@ async function startServer() {
           user: {
             username: user.username,
             avatarColor: user.avatar_color,
+            avatarUrl: user.avatar_url || null,
             bio: user.bio,
             createdAt: user.created_at.toISOString(),
             lastLoginAt: updatedUser.rows[0].last_login_at.toISOString(),
@@ -572,6 +579,7 @@ async function startServer() {
         user: {
           username: user.username,
           avatarColor: user.avatarColor,
+          avatarUrl: user.avatarUrl,
           bio: user.bio,
           createdAt: user.createdAt,
           lastLoginAt: user.lastLoginAt,
@@ -653,7 +661,7 @@ async function startServer() {
   app.patch('/api/account/profile', authenticateMiddleware, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
-      const { username, bio, avatarColor } = req.body ?? {};
+      const { username, bio, avatarColor, avatarUrl } = req.body ?? {};
 
       let nextUsername = user.username;
       let nextNormalized = user.usernameNormalized;
@@ -683,9 +691,25 @@ async function startServer() {
           ? avatarColor
           : user.avatarColor;
 
+      let nextAvatarUrl: string | null = user.avatarUrl;
+      if (avatarUrl === null || avatarUrl === '') {
+        nextAvatarUrl = null;
+      } else if (typeof avatarUrl === 'string') {
+        if (!avatarUrl.startsWith('data:image/')) {
+          res.status(400).json({ error: 'Invalid profile picture format.' });
+          return;
+        }
+        if (avatarUrl.length > 2_500_000) {
+          res.status(400).json({ error: 'Profile picture is too large (max 2 MB).' });
+          return;
+        }
+        nextAvatarUrl = avatarUrl;
+      }
+
       const updated = await pool.query<{
         username: string;
         avatar_color: string;
+        avatar_url: string | null;
         bio: string;
         created_at: Date;
         last_login_at: Date;
@@ -696,10 +720,11 @@ async function startServer() {
              username_normalized = $2,
              bio = $3,
              avatar_color = $4,
+             avatar_url = $5,
              updated_at = NOW()
-         WHERE id = $5
-         RETURNING username, avatar_color, bio, created_at, last_login_at, last_active_at`,
-        [nextUsername, nextNormalized, nextBio, nextColor, user.id]
+         WHERE id = $6
+         RETURNING username, avatar_color, avatar_url, bio, created_at, last_login_at, last_active_at`,
+        [nextUsername, nextNormalized, nextBio, nextColor, nextAvatarUrl, user.id]
       );
 
       const row = updated.rows[0];
@@ -707,6 +732,7 @@ async function startServer() {
         user: {
           username: row.username,
           avatarColor: row.avatar_color,
+          avatarUrl: row.avatar_url || null,
           bio: row.bio,
           createdAt: row.created_at.toISOString(),
           lastLoginAt: row.last_login_at.toISOString(),
@@ -851,6 +877,7 @@ async function startServer() {
         id: string;
         username: string;
         avatar_color: string;
+        avatar_url: string | null;
         bio: string;
         created_at: Date;
         is_blocked_by_me: boolean;
@@ -862,6 +889,7 @@ async function startServer() {
            u.id,
            u.username,
            u.avatar_color,
+           u.avatar_url,
            u.bio,
            u.created_at,
            EXISTS (
@@ -903,6 +931,7 @@ async function startServer() {
       const users = result.rows.map((r) => ({
         username: r.username,
         avatarColor: r.avatar_color,
+        avatarUrl: r.avatar_url || null,
         bio: r.bio,
         createdAt: r.created_at.toISOString(),
         isOnline: !r.is_blocked_by_me && !r.has_blocked_me ? isUserOnline(r.id) : false,
@@ -932,6 +961,7 @@ async function startServer() {
         id: string;
         username: string;
         avatar_color: string;
+        avatar_url: string | null;
         bio: string;
         created_at: Date;
         is_blocked_by_me: boolean;
@@ -941,6 +971,7 @@ async function startServer() {
            u.id,
            u.username,
            u.avatar_color,
+           u.avatar_url,
            u.bio,
            u.created_at,
            EXISTS (
@@ -967,6 +998,7 @@ async function startServer() {
         profile: {
           username: row.username,
           avatarColor: row.avatar_color,
+          avatarUrl: row.avatar_url || null,
           bio: row.bio,
           createdAt: row.created_at.toISOString(),
           isOnline: !row.is_blocked_by_me && !row.has_blocked_me ? isUserOnline(row.id) : false,
@@ -1045,6 +1077,7 @@ async function startServer() {
         peer_id: string;
         peer_username: string;
         peer_avatar_color: string;
+        peer_avatar_url: string | null;
         peer_bio: string;
         peer_created_at: Date;
         peer_last_active_at: Date;
@@ -1070,6 +1103,7 @@ async function startServer() {
            u_peer.id AS peer_id,
            u_peer.username AS peer_username,
            u_peer.avatar_color AS peer_avatar_color,
+           u_peer.avatar_url AS peer_avatar_url,
            u_peer.bio AS peer_bio,
            u_peer.created_at AS peer_created_at,
            u_peer.last_active_at AS peer_last_active_at,
@@ -1141,6 +1175,7 @@ async function startServer() {
           peer: {
             username: row.peer_username,
             avatarColor: row.peer_avatar_color,
+            avatarUrl: row.peer_avatar_url || null,
             bio: row.peer_bio,
             createdAt: row.peer_created_at.toISOString(),
             isOnline: !blockedEitherWay ? isUserOnline(row.peer_id) : false,
@@ -1191,11 +1226,12 @@ async function startServer() {
         id: string;
         username: string;
         avatar_color: string;
+        avatar_url: string | null;
         bio: string;
         created_at: Date;
         last_active_at: Date;
       }>(
-        `SELECT id, username, avatar_color, bio, created_at, last_active_at
+        `SELECT id, username, avatar_color, avatar_url, bio, created_at, last_active_at
          FROM users
          WHERE username_normalized = $1 AND deleted_at IS NULL
          LIMIT 1`,
@@ -1406,6 +1442,7 @@ async function startServer() {
             peer: {
               username: peer.username,
               avatarColor: peer.avatar_color,
+              avatarUrl: peer.avatar_url || null,
               bio: peer.bio,
               createdAt: peer.created_at.toISOString(),
               isOnline: isUserOnline(peer.id),
@@ -2191,10 +2228,11 @@ async function startServer() {
       const result = await pool.query<{
         username: string;
         avatar_color: string;
+        avatar_url: string | null;
         bio: string;
         created_at: Date;
       }>(
-        `SELECT u.username, u.avatar_color, u.bio, b.created_at
+        `SELECT u.username, u.avatar_color, u.avatar_url, u.bio, b.created_at
          FROM user_blocks b
          JOIN users u ON u.id = b.blocked_id
          WHERE b.blocker_id = $1 AND u.deleted_at IS NULL
@@ -2206,6 +2244,7 @@ async function startServer() {
         blockedUsers: result.rows.map((r) => ({
           username: r.username,
           avatarColor: r.avatar_color,
+          avatarUrl: r.avatar_url || null,
           bio: r.bio,
           blockedAt: r.created_at.toISOString(),
         })),

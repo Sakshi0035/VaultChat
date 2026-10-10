@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(30) NOT NULL,
   username_normalized VARCHAR(30) NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  avatar_color VARCHAR(32) NOT NULL DEFAULT '#E11D48',
+  avatar_color VARCHAR(32) NOT NULL DEFAULT '#0284C7',
+  avatar_url TEXT NULL,
   bio VARCHAR(160) NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -29,6 +30,8 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT chk_username_format CHECK (username ~ '^[a-zA-Z0-9_]{3,30}$'),
   CONSTRAINT chk_username_normalized CHECK (username_normalized = lower(username))
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_users_username_normalized ON users (username_normalized);
 CREATE INDEX IF NOT EXISTS idx_users_last_login_at ON users (last_login_at);

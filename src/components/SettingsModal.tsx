@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   User,
@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   Check,
   Laptop,
+  Camera,
+  Upload,
 } from 'lucide-react';
 import { api } from '../lib/api.ts';
 import {
@@ -46,6 +48,36 @@ const AVATAR_COLORS = [
   '#047857', // Forest Emerald
 ];
 
+function cropAndCompressAvatar(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read image file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Invalid image file.'));
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context unavailable.'));
+          return;
+        }
+        const minSide = Math.min(img.width, img.height);
+        const sx = (img.width - minSide) / 2;
+        const sy = (img.height - minSide) / 2;
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        resolve(dataUrl);
+      };
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   initialTab = 'account',
@@ -65,8 +97,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [username, setUsername] = useState(currentUser.username);
   const [bio, setBio] = useState(currentUser.bio || '');
   const [avatarColor, setAvatarColor] = useState(currentUser.avatarColor || '#0284C7');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(currentUser.avatarUrl || null);
   const [profileSaving, setProfileSaving] = useState(false);
-  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [profileMessage, setProfileMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  const pfpInputRef = useRef<HTMLInputElement | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -93,6 +131,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setUsername(currentUser.username);
       setBio(currentUser.bio || '');
       setAvatarColor(currentUser.avatarColor || '#0284C7');
+      setAvatarUrl(currentUser.avatarUrl || null);
       setProfileMessage(null);
       setPasswordError(null);
       setDeleteError(null);
@@ -122,6 +161,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handlePfpFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setProfileMessage({ type: 'error', text: 'Please select an image file (JPG, PNG, WebP).' });
+      return;
+    }
+
+    setProfileMessage(null);
+    setProfileSaving(true);
+    try {
+      const compressedDataUrl = await cropAndCompressAvatar(file);
+      setAvatarUrl(compressedDataUrl);
+      const updated = await api.updateProfile({
+        username: username.trim(),
+        bio: bio.trim(),
+        avatarColor,
+        avatarUrl: compressedDataUrl,
+      });
+      onUserUpdated(updated);
+      setProfileMessage({ type: 'success', text: 'Profile picture uploaded & saved!' });
+    } catch (err: any) {
+      setProfileMessage({
+        type: 'error',
+        text: err.message || 'Failed to upload profile picture.',
+      });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleRemovePfp = async () => {
+    setProfileMessage(null);
+    setProfileSaving(true);
+    try {
+      setAvatarUrl(null);
+      const updated = await api.updateProfile({
+        username: username.trim(),
+        bio: bio.trim(),
+        avatarColor,
+        avatarUrl: null,
+      });
+      onUserUpdated(updated);
+      setProfileMessage({ type: 'success', text: 'Profile picture removed.' });
+    } catch (err: any) {
+      setProfileMessage({
+        type: 'error',
+        text: err.message || 'Failed to remove profile picture.',
+      });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileMessage(null);
@@ -131,6 +225,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         username: username.trim(),
         bio: bio.trim(),
         avatarColor,
+        avatarUrl,
       });
       onUserUpdated(updated);
       setProfileMessage({ type: 'success', text: 'Profile updated.' });
@@ -379,36 +474,101 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {activeTab === 'account' && (
             <div className="space-y-6 sm:space-y-8">
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0 select-none"
-                    style={{ backgroundColor: avatarColor }}
-                  >
-                    {username.slice(0, 2).toUpperCase()}
+              <form onSubmit={handleSaveProfile} className="space-y-5">
+                {/* Profile Picture Upload & Avatar Color Section */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="relative group shrink-0 self-start">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={username}
+                        className="w-20 h-20 rounded-full object-cover border-2 border-emerald-400 shadow-sm"
+                      />
+                    ) : (
+                      <div
+                        className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-xl select-none border-2 border-teal-500/40"
+                        style={{ backgroundColor: avatarColor }}
+                      >
+                        {username.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => pfpInputRef.current?.click()}
+                      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-emerald-500 text-white flex items-center justify-center shadow-md cursor-pointer hover:scale-105 transition-transform"
+                      title="Upload Profile Picture"
+                      aria-label="Upload Profile Picture"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div className="space-y-2">
-                    <span className="text-xs font-semibold block">Avatar Color</span>
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      {AVATAR_COLORS.map((color) => (
+
+                  <div className="space-y-3 flex-1">
+                    <div>
+                      <span className="text-xs font-semibold block mb-1.5">
+                        Profile Picture (PFP)
+                      </span>
+                      <input
+                        ref={pfpInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePfpFileChange}
+                        className="hidden"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
-                          key={color}
                           type="button"
-                          onClick={() => setAvatarColor(color)}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
-                            avatarColor === color ? 'scale-110 ring-2 ring-offset-2 ring-emerald-400' : ''
-                          }`}
-                          style={{ backgroundColor: color }}
-                          aria-label={`Select color ${color}`}
+                          onClick={() => pfpInputRef.current?.click()}
+                          disabled={profileSaving}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:to-emerald-400 rounded-xl transition-all cursor-pointer"
                         >
-                          {avatarColor === color && <Check className="w-4 h-4 text-white" />}
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{avatarUrl ? 'Change Photo' : 'Upload Photo'}</span>
                         </button>
-                      ))}
+                        {avatarUrl && (
+                          <button
+                            type="button"
+                            onClick={handleRemovePfp}
+                            disabled={profileSaving}
+                            className={`px-3 py-2 min-h-[38px] text-xs font-semibold rounded-xl border transition-colors cursor-pointer ${
+                              isDark
+                                ? 'border-red-500/40 text-red-300 hover:bg-red-500/10'
+                                : 'border-red-300 text-red-600 hover:bg-red-50'
+                            }`}
+                          >
+                            Remove Photo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-xs font-semibold block mb-1.5">
+                        Fallback Avatar Color
+                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {AVATAR_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setAvatarColor(color)}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center transition-transform cursor-pointer ${
+                              avatarColor === color
+                                ? 'scale-110 ring-2 ring-offset-2 ring-emerald-400'
+                                : ''
+                            }`}
+                            style={{ backgroundColor: color }}
+                            aria-label={`Select color ${color}`}
+                          >
+                            {avatarColor === color && <Check className="w-3.5 h-3.5 text-white" />}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                   <div>
                     <label className="block text-xs font-semibold mb-1.5">Username</label>
                     <input
@@ -470,7 +630,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 )}
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                  <span className={`text-[11px] tabular-nums ${isDark ? 'text-cyan-200/60' : 'text-slate-500'}`}>
+                  <span
+                    className={`text-[11px] tabular-nums ${
+                      isDark ? 'text-cyan-200/60' : 'text-slate-500'
+                    }`}
+                  >
                     Last sign-in:{' '}
                     {new Date(currentUser.lastLoginAt).toLocaleString(undefined, {
                       dateStyle: 'medium',
@@ -480,7 +644,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     type="submit"
                     disabled={profileSaving}
-                    className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 disabled:opacity-50 rounded-xl transition-all whitespace-nowrap"
+                    className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] text-xs font-semibold text-white bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-500 hover:from-blue-500 hover:via-cyan-500 hover:to-emerald-400 disabled:opacity-50 rounded-xl transition-all whitespace-nowrap cursor-pointer"
                   >
                     {profileSaving ? 'Saving...' : 'Save Profile'}
                   </button>
@@ -731,12 +895,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         className="flex items-center justify-between px-4 py-3.5 gap-3"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                            style={{ backgroundColor: b.avatarColor }}
-                          >
-                            {b.username.slice(0, 2).toUpperCase()}
-                          </div>
+                          {b.avatarUrl ? (
+                            <img
+                              src={b.avatarUrl}
+                              alt={b.username}
+                              className="w-9 h-9 rounded-full object-cover shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                              style={{ backgroundColor: b.avatarColor }}
+                            >
+                              {b.username.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <div className="text-sm font-semibold truncate">@{b.username}</div>
                             <div className="text-[11px] text-cyan-200/60 tabular-nums">

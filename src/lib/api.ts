@@ -151,7 +151,12 @@ export const api = {
     return res.sessions;
   },
 
-  async updateProfile(payload: { username?: string; bio?: string; avatarColor?: string }) {
+  async updateProfile(payload: {
+    username?: string;
+    bio?: string;
+    avatarColor?: string;
+    avatarUrl?: string | null;
+  }) {
     const res = await request<{ user: CurrentUser }>('/api/account/profile', {
       method: 'PATCH',
       body: JSON.stringify(payload),
